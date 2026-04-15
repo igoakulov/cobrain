@@ -16,7 +16,7 @@ This file provides guidelines for agentic coding agents working on Hippo.
 
 ### Files as Source of Truth
 
-Topic markdown files are primary truth. graph.json is derived display cache.
+Topic markdown files are primary truth. graph.yaml is derived display cache.
 
 ### CLI-First for Token Efficiency
 
@@ -85,8 +85,8 @@ Before write operations:
 ### Graph Derivation
 - Scan topics/*.md
 - Parse frontmatter
-- Build graph.json from files
-- Never reverse (graph.json → files)
+- Build graph.yaml from files
+- Never reverse (graph.yaml → files)
 
 ### Backup
 - Scope: frontmatter only, not prose content
@@ -106,8 +106,8 @@ Before write operations:
 - With `--warnings`: Show warning details
 
 **Sources:** `hippo sources [--warnings]`
-- Summary: `Total sources: N chats, M x_posts, K urls, X removed, Y warnings`
-- With `--warnings`: Show orphan source warnings
+- Summary: `Total sources: N chats, M X conversations, K removed, X warnings`
+- With `--warnings`: Show UNUSED SOURCES and INCOMPLETE CONVERSATIONS
 
 **Ingest:** `hippo sources --ingest chatgpt --paths <path>... [--from <datetime>] [--till <datetime>] [--titles <titles>]`
 - Ingest ChatGPT exports
@@ -163,6 +163,29 @@ field: value
 filename.md
 field: value
 ...
+```
+
+---
+
+## Package Management
+
+**Always use `.venv` for this project.** Activate it before running commands:
+```bash
+source .venv/bin/activate
+```
+
+**Use `uv sync` to install/update dependencies.** Never use `pip install` directly.
+
+Adding a new dependency:
+1. Add to `pyproject.toml` dependencies
+2. Run `uv sync` to install
+3. Verify with `uv pip list`
+
+**Running commands:** Use `.venv/bin/hippo` or activate the venv first:
+```bash
+.venv/bin/hippo sources --ingest x --own
+# or
+source .venv/bin/activate && hippo sources --ingest x --own
 ```
 
 ---

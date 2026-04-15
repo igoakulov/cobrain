@@ -1,12 +1,11 @@
-import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Literal
 
-from hippo.directories import get_hippo_dir
+from hippo.directories import get_sources_archive_path
+from hippo.yaml_utils import read_yaml, write_yaml
 
-ArchiveRefType = Literal["url", "local_file", "x_post", "chat"]
+ArchiveRefType = Literal["url", "local_file", "x", "chat"]
 
 
 @dataclass
@@ -51,21 +50,20 @@ class Archive:
         )
 
 
-def get_archive_path() -> Path:
-    return get_hippo_dir() / "archive.json"
-
-
-def load_archive() -> Archive:
-    path = get_archive_path()
+def load_sources_archive() -> Archive:
+    path = get_sources_archive_path()
     if not path.exists():
         return Archive()
-    return Archive.from_dict(json.loads(path.read_text()))
+    data = read_yaml(path)
+    if not data or not isinstance(data, dict):
+        return Archive()
+    return Archive.from_dict(data)
 
 
-def save_archive(archive: Archive) -> None:
-    path = get_archive_path()
+def save_sources_archive(archive: Archive) -> None:
+    path = get_sources_archive_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(archive.to_dict(), indent=2))
+    write_yaml(path, archive.to_dict())
 
 
 def now_iso() -> str:
@@ -73,7 +71,7 @@ def now_iso() -> str:
 
 
 def add_reference(ref_type: ArchiveRefType, value: str, topics: list[str]) -> None:
-    archive = load_archive()
+    archive = load_sources_archive()
     existing = None
     for ref in archive.references:
         if ref.type == ref_type and ref.value == value:
@@ -94,13 +92,13 @@ def add_reference(ref_type: ArchiveRefType, value: str, topics: list[str]) -> No
             )
         )
 
-    save_archive(archive)
+    save_sources_archive(archive)
 
 
 def remove_reference(
     ref_type: ArchiveRefType, value: str, topics: list[str] | None = None
 ) -> None:
-    archive = load_archive()
+    archive = load_sources_archive()
     for ref in archive.references:
         if ref.type == ref_type and ref.value == value:
             if topics is None:
@@ -113,11 +111,11 @@ def remove_reference(
                     ref.removed_at = now_iso()
             break
 
-    save_archive(archive)
+    save_sources_archive(archive)
 
 
 def sync_archive_from_topics(topics: list[dict]) -> None:
-    archive = load_archive()
+    archive = load_sources_archive()
     current_refs: set[tuple[str, str]] = set()
 
     for topic in topics:
@@ -131,16 +129,16 @@ def sync_archive_from_topics(topics: list[dict]) -> None:
         if (ref.type, ref.value) not in current_refs and ref.removed_at is None:
             ref.removed_at = now_iso()
 
-    save_archive(archive)
+    save_sources_archive(archive)
 
 
 def _infer_source_type(value: str) -> ArchiveRefType | None:
     if value.startswith("https://x.com/") or value.startswith("http://x.com/"):
-        return "x_post"
+        return "x"
     if value.startswith("chats/") or value.endswith(".md"):
         return "chat"
-    if value.startswith("sources/x_posts/"):
-        return "x_post"
+    if value.startswith("sources/x/"):
+        return "x"
     if value.startswith("~/"):
         return "local_file"
     if value.startswith("/") or ":" in value:
@@ -171,7 +169,7 @@ def _upsert_reference(
 
 
 def get_source_stats() -> dict:
-    archive = load_archive()
+    archive = load_sources_archive()
 
     by_type: dict[str, int] = {}
     removed_count = 0

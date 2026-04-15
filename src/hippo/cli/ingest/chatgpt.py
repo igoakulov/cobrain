@@ -1,5 +1,4 @@
 import argparse
-import json
 import re
 import sys
 from datetime import datetime
@@ -11,7 +10,8 @@ from hippo.directories import (
     get_chats_logs_dir,
     get_chat_log_path,
 )
-from hippo.sources.archive import add_reference
+from hippo.sources_archive import add_reference
+from hippo.yaml_utils import write_yaml
 
 
 def cmd_ingest_chat(args: argparse.Namespace) -> None:
@@ -76,7 +76,6 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
 
     created_files = []
     updated_files = []
-    filepath_changes = []
 
     log_entries = []
     ingest_timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
@@ -88,22 +87,19 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
         existing_last_msg_id = None
         created_at = datetime.utcnow().isoformat()
         existing_body = ""
+        existing_title = None
 
         if existing_file:
             existing_last_msg_id = _find_last_message_id_from_log(conv_id)
             existing_content = existing_file.read_text(encoding="utf-8")
-            _, existing_body = _split_frontmatter(existing_content)
+            fm, existing_body = _split_frontmatter(existing_content)
             created_at = _get_created_at_from_file(existing_file)
+            existing_title = fm.get("title") if fm else None
 
         conv = parse_conversation_expand(conv_data, existing_last_msg_id)
 
         if existing_file:
-            new_output_filename = get_output_filename(conv)
-            if existing_file.name != new_output_filename:
-                filepath_changes.append((str(existing_file), new_output_filename))
-                updated_files.append(new_output_filename)
-            else:
-                updated_files.append(str(existing_file))
+            updated_files.append(str(existing_file))
         else:
             if conv.messages:
                 created_files.append(get_output_filename(conv))
@@ -132,7 +128,7 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
 
             new_fm = _build_frontmatter(
                 conv_id=conv_id,
-                conv_title=conv.title,
+                conv_title=existing_title or conv.title,
                 created_at=created_at,
                 updated_at=updated_at,
                 original_create_time=conv.create_time,
@@ -142,12 +138,14 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
             content = new_fm + "\n" + body_content.rstrip()
         else:
             word_count = compute_word_count(conv)
+            title = existing_title or conv.title
             content = conversation_to_markdown(
                 conv,
                 source_path=None,
                 word_count=word_count,
                 created_at=created_at,
                 updated_at=updated_at,
+                title=title,
             )
 
         output_path.write_text(content, encoding="utf-8")
@@ -168,7 +166,7 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
 
     if log_entries:
         log_path = get_chat_log_path(ingest_timestamp)
-        log_path.write_text(json.dumps(log_entries, indent=2), encoding="utf-8")
+        write_yaml(log_path, log_entries)
 
     for entry in log_entries:
         add_reference("chat", entry["output_file"], [])
@@ -177,21 +175,23 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
     total_updated = len(updated_files)
     print(f"Ingest complete: {total_created} created, {total_updated} updated")
 
-    if filepath_changes:
-        print("\nWARNING: Update chat file titles in topic sources:")
-        for old_path, new_filename in filepath_changes:
-            print(f"- {old_path} -> {new_filename}")
-
 
 def _find_last_message_id_from_log(conv_id: str) -> str | None:
+    from hippo.yaml_utils import read_yaml
+
     logs_dir = get_chats_logs_dir()
     if not logs_dir.exists():
         return None
-    for log_file in logs_dir.glob("ingest_*.json"):
-        log_data = json.loads(log_file.read_text())
-        for entry in log_data:
-            if entry.get("conversation_id") == conv_id:
-                return entry.get("last_message_id")
+    for log_file in logs_dir.glob("ingest_*.yaml"):
+        log_data = read_yaml(log_file)
+        if not log_data:
+            continue
+        if isinstance(log_data, list):
+            for entry in log_data:
+                if not isinstance(entry, dict):
+                    continue
+                if entry.get("conversation_id") == conv_id:
+                    return entry.get("last_message_id")
     return None
 
 

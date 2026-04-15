@@ -1,4 +1,3 @@
-import json
 import re
 from pathlib import Path
 
@@ -12,6 +11,7 @@ from hippo.topics.topic import (
     parse_frontmatter,
     topic_from_markdown,
 )
+from hippo.yaml_utils import read_yaml, write_yaml
 
 
 def _count_words(body: str) -> int:
@@ -182,10 +182,8 @@ def save_graph(result: BuildResult) -> dict:
 
     old_graph: dict | None = None
     if graph_path.exists():
-        try:
-            old_graph = json.loads(graph_path.read_text())
-        except (json.JSONDecodeError, IOError):
-            pass
+        loaded = read_yaml(graph_path)
+        old_graph = loaded if loaded else None
 
     data = {
         "topics": [t.to_dict() for t in result.topics],
@@ -197,7 +195,7 @@ def save_graph(result: BuildResult) -> dict:
         save_diff(diff)
 
     save_clusters(result.clusters)
-    graph_path.write_text(json.dumps(data, indent=2))
+    write_yaml(graph_path, data)
 
     word_counts = {}
     for topic in result.topics:

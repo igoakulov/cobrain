@@ -1,4 +1,3 @@
-import json
 import re
 from datetime import datetime
 from pathlib import Path
@@ -67,16 +66,17 @@ def get_stem_from_filename(filename: str) -> str:
 
 
 def get_log_entries(logs_dir: Path) -> list[dict]:
+    from hippo.yaml_utils import read_yaml_list
+
     entries = {}
     if not logs_dir.exists():
         return []
-    for log_file in sorted(logs_dir.glob("ingest_*.json")):
-        try:
-            data = json.loads(log_file.read_text(encoding="utf-8"))
-            for entry in data:
-                conv_id = entry.get("conversation_id")
-                if conv_id:
-                    entries[conv_id] = entry
-        except Exception:
+    for log_file in sorted(logs_dir.glob("ingest_*.yaml")):
+        data = read_yaml_list(log_file)
+        if not data:
             continue
+        for entry in data:
+            conv_id = entry.get("conversation_id")
+            if conv_id:
+                entries[conv_id] = entry
     return list(entries.values())

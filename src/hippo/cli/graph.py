@@ -6,6 +6,7 @@ from collections import deque
 from hippo.cli.utils import _count_connections, _print_errors, _print_warnings
 from hippo.directories import get_graph_path
 from hippo.graph import sync as graph_sync
+from hippo.yaml_utils import read_yaml
 
 MINIMAL_FIELDS = frozenset({"id", "cluster", "parent", "related"})
 FULL_FIELDS = frozenset(
@@ -82,7 +83,10 @@ def cmd_graph(args: argparse.Namespace) -> None:
         print("ERROR: Graph not found. Run 'hippo sync' first.", file=sys.stderr)
         sys.exit(1)
 
-    data = json.loads(graph_path.read_text())
+    data = read_yaml(graph_path)
+    if not data:
+        print("ERROR: Graph file is corrupted.", file=sys.stderr)
+        sys.exit(1)
     topics = data.get("topics", [])
 
     if args.from_topic:

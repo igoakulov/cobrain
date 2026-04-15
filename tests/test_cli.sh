@@ -3,14 +3,9 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-TEST_VAULT="/tmp/hippo_test_$$"
-export HIPPO_VAULT="$TEST_VAULT"
+TEST_VAULT="test-vault"
 
-cleanup() {
-    rm -rf "$TEST_VAULT"
-}
-trap cleanup EXIT
-
+rm -rf "$TEST_VAULT"
 mkdir -p "$TEST_VAULT"
 
 echo "=== version ==="
@@ -104,9 +99,9 @@ EOF
 echo "=== sync (build graph with topics) ==="
 hippo sync
 
-echo "=== verify clusters.json created ==="
-test -f .hippo/clusters.json && echo "clusters.json exists"
-CLUSTER_COUNT=$(python3 -c "import json; print(len(json.load(open('.hippo/clusters.json'))['clusters']))")
+echo "=== verify clusters.yaml created ==="
+test -f .hippo/clusters.yaml && echo "clusters.yaml exists"
+CLUSTER_COUNT=$(python3 -c "import yaml; print(len(yaml.safe_load(open('.hippo/clusters.yaml'))['clusters']))")
 echo "Cluster count: $CLUSTER_COUNT"
 
 echo "=== topics (summary without ids) ==="
@@ -175,17 +170,17 @@ hippo graph --from a --depth 1 --pretty | head -5
 echo "=== graph --to c (error - requires --from) ==="
 hippo graph --to c 2>&1 || echo "Expected error when --to without --from"
 
-echo "=== backup (creates clusters.json in backup) ==="
+echo "=== backup (creates clusters.yaml in backup) ==="
 hippo backup
 
 echo "=== list backups ==="
 ls .hippo/backups/
 
-BACKUP_FILE=$(ls .hippo/backups/graph_backup_*.json | head -1)
-BACKUP_TS=$(basename "$BACKUP_FILE" | sed 's/graph_backup_//' | sed 's/.json//')
+BACKUP_FILE=$(ls .hippo/backups/graph_backup_*.yaml | head -1)
+BACKUP_TS=$(basename "$BACKUP_FILE" | sed 's/graph_backup_//' | sed 's/.yaml//')
 echo "Using backup: $BACKUP_TS"
 
-BACKUP_CLUSTERS=$(ls .hippo/backups/clusters_backup_*.json | head -1)
+BACKUP_CLUSTERS=$(ls .hippo/backups/clusters_backup_*.yaml | head -1)
 echo "Backup clusters: $BACKUP_CLUSTERS"
 
 echo "=== modify topics before restore ==="
@@ -198,9 +193,9 @@ echo "=== verify restore (cluster should be original values) ==="
 hippo topics --ids a | grep -q "cluster: ml" && echo "Restore successful: a cluster=ml"
 hippo topics --ids c | grep -q "cluster: nlp" && echo "Restore successful: c cluster=nlp"
 
-echo "=== verify clusters.json restored ==="
-test -f .hippo/clusters.json && echo "clusters.json exists after restore"
-python3 -c "import json; d=json.load(open('.hippo/clusters.json')); ids=[c['id'] for c in d['clusters']]; assert 'ml' in ids and 'nlp' in ids, f'Expected ml and nlp, got {ids}'; print('clusters.json contains ml and nlp')"
+echo "=== verify clusters.yaml restored ==="
+test -f .hippo/clusters.yaml && echo "clusters.yaml exists after restore"
+python3 -c "import yaml; d=yaml.safe_load(open('.hippo/clusters.yaml')); ids=[c['id'] for c in d['clusters']]; assert 'ml' in ids and 'nlp' in ids, f'Expected ml and nlp, got {ids}'; print('clusters.yaml contains ml and nlp')"
 
 echo "=== restore (most recent) ==="
 hippo topics --ids a --meta cluster=restored-cluster
@@ -214,15 +209,15 @@ echo "=== verify updated b ==="
 hippo topics --ids b
 
 echo "=== topics --meta cluster customization survives sync ==="
-echo "=== modify clusters.json manually ==="
+echo "=== modify clusters.yaml manually ==="
 python3 -c "
-import json
-d = json.load(open('.hippo/clusters.json'))
+import yaml
+d = yaml.safe_load(open('.hippo/clusters.yaml'))
 for c in d['clusters']:
     if c['id'] == 'ml':
         c['title'] = 'Machine Learning'
         c['color'] = '#FF0000'
-json.dump(d, open('.hippo/clusters.json', 'w'), indent=2)
+yaml.safe_dump(d, open('.hippo/clusters.yaml', 'w'), default_flow_style=False)
 "
 echo "Modified ml cluster to 'Machine Learning' / #FF0000"
 
@@ -247,8 +242,8 @@ EOF
 echo "=== sync (should merge: preserve ml customizations, add rl auto-assigned) ==="
 hippo sync
 python3 -c "
-import json
-d = json.load(open('.hippo/clusters.json'))
+import yaml
+d = yaml.safe_load(open('.hippo/clusters.yaml'))
 for c in d['clusters']:
     if c['id'] == 'ml':
         assert c['title'] == 'Machine Learning', f'Expected Machine Learning, got {c[\"title\"]}'

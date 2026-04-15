@@ -1,7 +1,5 @@
-import json
-from pathlib import Path
-
 from hippo.models import Cluster
+from hippo.yaml_utils import read_yaml, write_yaml
 
 PALETTE = [
     "#4A90D9",
@@ -37,28 +35,25 @@ PALETTE = [
 ]
 
 
-def get_clusters_path() -> Path:
-    from hippo.directories import get_hippo_dir
-
-    return get_hippo_dir() / "clusters.json"
-
-
 def save_clusters(clusters: list[Cluster]) -> None:
+    from hippo.directories import get_clusters_path
+
     path = get_clusters_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {"clusters": [c.to_dict() for c in clusters]}
-    path.write_text(json.dumps(data, indent=2))
+    write_yaml(path, data)
 
 
 def load_clusters() -> list[Cluster]:
+    from hippo.directories import get_clusters_path
+
     path = get_clusters_path()
     if not path.exists():
         return []
-    try:
-        data = json.loads(path.read_text())
-        return [Cluster.from_dict(c) for c in data.get("clusters", [])]
-    except (json.JSONDecodeError, IOError):
+    data = read_yaml(path)
+    if not data:
         return []
+    return [Cluster.from_dict(c) for c in data.get("clusters", [])]
 
 
 def merge_clusters(inferred: list[Cluster]) -> list[Cluster]:
@@ -82,15 +77,11 @@ def infer_clusters(topics: list[dict]) -> list[Cluster]:
     clusters = []
     for i, cluster_id in enumerate(sorted(unique_clusters)):
         color = PALETTE[i % len(PALETTE)]
-        title = _format_cluster_title(cluster_id)
+        words = cluster_id.replace("-", " ").replace("_", " ").split()
+        title = " ".join(word.capitalize() for word in words)
         clusters.append(Cluster(id=cluster_id, title=title, color=color))
 
     return clusters
-
-
-def _format_cluster_title(cluster_id: str) -> str:
-    words = cluster_id.replace("-", " ").replace("_", " ").split()
-    return " ".join(word.capitalize() for word in words)
 
 
 def get_cluster_color(cluster_id: str, clusters: list[Cluster]) -> str | None:

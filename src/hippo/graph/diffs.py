@@ -1,7 +1,8 @@
-import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+from hippo.yaml_utils import write_yaml, read_yaml
 
 
 @dataclass
@@ -172,8 +173,8 @@ def save_diff(diff: Diff) -> Path:
 
     diffs_dir = get_diffs_dir()
     diffs_dir.mkdir(parents=True, exist_ok=True)
-    diff_path = diffs_dir / f"diff_{diff.timestamp}.json"
-    diff_path.write_text(json.dumps(diff.to_dict(), indent=2))
+    diff_path = diffs_dir / f"diff_{diff.timestamp}.yaml"
+    write_yaml(diff_path, diff.to_dict())
     return diff_path
 
 
@@ -184,7 +185,8 @@ def load_diffs() -> list[Diff]:
     if not diffs_dir.exists():
         return []
     diffs = []
-    for path in sorted(diffs_dir.glob("diff_*.json")):
-        data = json.loads(path.read_text())
-        diffs.append(Diff.from_dict(data))
+    for path in sorted(diffs_dir.glob("diff_*.yaml")):
+        data = read_yaml(path)
+        if data:
+            diffs.append(Diff.from_dict(data))
     return diffs

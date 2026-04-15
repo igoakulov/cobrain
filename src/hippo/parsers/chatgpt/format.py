@@ -101,12 +101,13 @@ def conversation_to_markdown(
     created_at: str,
     updated_at: str,
     last_message_id: str = "",
+    title: str = "",
 ) -> str:
     siblings_map = build_siblings_map(conv.messages)
 
     lines = ["---"]
     lines.append(f"id: {conv.id}")
-    lines.append(f"title: {conv.title}")
+    lines.append(f"title: {title or conv.title}")
     lines.append(f"created_at: {created_at}")
     lines.append(f"updated_at: {updated_at}")
     lines.append(

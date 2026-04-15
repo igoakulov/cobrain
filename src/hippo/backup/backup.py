@@ -1,8 +1,8 @@
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from hippo.directories import get_backups_dir, get_graph_path
+from hippo.directories import get_backups_dir
+from hippo.yaml_utils import write_yaml
 
 DEFAULT_RETENTION = 20
 
@@ -12,7 +12,7 @@ def list_backups() -> list[str]:
     if not backups_dir.exists():
         return []
     backups = []
-    for path in backups_dir.glob("graph_backup_*.json"):
+    for path in backups_dir.glob("graph_backup_*.yaml"):
         ts = path.stem.replace("graph_backup_", "")
         backups.append(ts)
     return sorted(backups, reverse=True)
@@ -28,10 +28,10 @@ def create_backup(result) -> Path:
     backups_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
-    backup_path = backups_dir / f"graph_backup_{timestamp}.json"
+    backup_path = backups_dir / f"graph_backup_{timestamp}.yaml"
 
     clusters_path = get_clusters_path()
-    backup_clusters_path = backups_dir / f"clusters_backup_{timestamp}.json"
+    backup_clusters_path = backups_dir / f"clusters_backup_{timestamp}.yaml"
     if clusters_path.exists():
         backup_clusters_path.write_text(clusters_path.read_text())
 
@@ -41,7 +41,7 @@ def create_backup(result) -> Path:
         "clusters": [c.to_dict() for c in result.clusters],
         "word_counts": word_counts,
     }
-    backup_path.write_text(json.dumps(backup_data, indent=2))
+    write_yaml(backup_path, backup_data)
 
     _prune_backups()
 
@@ -51,7 +51,7 @@ def create_backup(result) -> Path:
 def _prune_backups(retention: int = DEFAULT_RETENTION) -> None:
     backups_dir = get_backups_dir()
     backups = sorted(
-        backups_dir.glob("graph_backup_*.json"),
+        backups_dir.glob("graph_backup_*.yaml"),
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
