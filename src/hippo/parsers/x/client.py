@@ -8,7 +8,7 @@ from hippo.parsers.x.transform import (
     format_article_as_text,
 )
 
-DEFAULT_PAGE_SIZE = 5
+DEFAULT_PAGE_SIZE = 10
 
 X_TWEET_FIELDS = [
     "text",
@@ -110,79 +110,120 @@ class XClient:
         except Exception:
             return None
 
-    def get_posts_by_ids(self, post_ids: list[str]) -> list[XPost]:
-        posts = []
-        for pid in post_ids:
-            post = self.get_post_by_id(pid)
-            if post:
-                posts.append(post)
-        return posts
+    def get_posts_by_ids(
+        self, post_ids: list[str], post_type: str = "ids"
+    ) -> list[XPost]:
+        if not post_ids:
+            return []
+
+        all_posts = []
+        for i in range(0, len(post_ids), 100):
+            chunk = post_ids[i : i + 100]
+            chunk_posts = self._fetch_posts_by_ids_chunk(chunk, post_type)
+            all_posts.extend(chunk_posts)
+        return all_posts
+
+    def _fetch_posts_by_ids_chunk(
+        self, post_ids: list[str], post_type: str
+    ) -> list[XPost]:
+        try:
+            response = self._get_client().posts.get_by_ids(
+                post_ids,
+                tweet_fields=X_TWEET_FIELDS,
+                user_fields=X_USER_FIELDS,
+                expansions=[
+                    "author_id",
+                    "attachments.poll_ids",
+                    "attachments.media_keys",
+                ],
+            )
+            if not response.data:
+                return []
+
+            includes = getattr(response, "includes", {}) or {}
+            posts = []
+            for tweet in response.data:
+                post = self._parse_post_data(tweet, includes, post_type=post_type)
+                if post:
+                    posts.append(post)
+            return posts
+        except Exception:
+            return []
 
     def get_own_posts(
         self,
         since_id: str | None = None,
         until_id: str | None = None,
         count: int | None = None,
-        loop: bool = False,
         existing_ids: set[str] | None = None,
+        is_new: bool = False,
     ) -> list[XPost]:
         user_id = self._get_user_id()
         return self._fetch_posts(
             lambda params: self._get_client().users.get_posts(user_id, **params),
             "own",
-            count,
-            loop,
             existing_ids,
             since_id=since_id,
             until_id=until_id,
+            count=count,
+            _new=is_new,
         )
 
     def get_liked_posts(
         self,
         count: int | None = None,
-        loop: bool = False,
         existing_ids: set[str] | None = None,
+        is_new: bool = False,
     ) -> list[XPost]:
         user_id = self._get_user_id()
         return self._fetch_posts(
             lambda params: self._get_client().users.get_liked_posts(user_id, **params),
             "liked",
-            count,
-            loop,
             existing_ids,
+            count=count,
+            _new=is_new,
         )
 
     def get_bookmarked_posts(
         self,
         count: int | None = None,
-        loop: bool = False,
         existing_ids: set[str] | None = None,
+        is_new: bool = False,
     ) -> list[XPost]:
         user_id = self._get_user_id()
         return self._fetch_posts(
             lambda params: self._get_client().users.get_bookmarks(user_id, **params),
             "bookmarked",
-            count,
-            loop,
             existing_ids,
+            count=count,
+            _new=is_new,
         )
 
     def _fetch_posts(
         self,
         fetch_fn,
         post_type: str,
-        count: int | None,
-        loop: bool,
         existing_ids: set[str] | None,
         **extra_params,
     ) -> list[XPost]:
         existing_ids = existing_ids or set()
-        page_size = calculate_page_size(count) if count else DEFAULT_PAGE_SIZE
-        total_limit = count
+        since_id = extra_params.get("since_id")
+        until_id = extra_params.get("until_id")
+        count = extra_params.get("count")
+        is_new = extra_params.get("_new")
+
+        if count is not None:
+            page_size = calculate_page_size(count)
+        elif since_id or until_id:
+            page_size = 100
+        else:
+            page_size = DEFAULT_PAGE_SIZE
+
+        should_paginate = since_id or until_id or count is not None
 
         params = get_base_params(page_size)
         for key, value in extra_params.items():
-            if value is not None:
+            if value is not None and key not in ("_new", "count"):
                 params[key] = value
 
         all_posts: list[XPost] = []
@@ -194,18 +235,18 @@ class XClient:
                 for tweet in response.data:
                     post = self._parse_post_data(tweet, includes, post_type=post_type)
 
-                    if loop and post.id in existing_ids:
+                    if is_new and post.id in existing_ids:
                         return all_posts
 
                     all_posts.append(post)
 
-                    if total_limit and len(all_posts) >= total_limit:
+                    if count and len(all_posts) >= count:
                         return all_posts
 
             meta = getattr(response, "meta", None)
             next_token = meta.next_token if meta else None
 
-            if not loop or not next_token:
+            if not should_paginate or not next_token:
                 break
 
         return all_posts

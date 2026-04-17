@@ -4,7 +4,6 @@ from hippo.cli.ingest import cmd_ingest_chat, cmd_ingest_x
 from hippo.directories import VAULT_DIR
 from hippo.sources_archive import get_source_stats
 from hippo.topics.topic import get_frontmatter
-from hippo.yaml_utils import read_yaml
 
 
 def cmd_sources(args: argparse.Namespace) -> None:
@@ -17,7 +16,6 @@ def cmd_sources(args: argparse.Namespace) -> None:
 
     stats = get_source_stats()
     unused_sources = _find_unused_sources()
-    incomplete_conversations = _find_incomplete_x_conversations()
 
     parts = []
     x_count = stats["by_type"].get("x", 0)
@@ -27,9 +25,7 @@ def cmd_sources(args: argparse.Namespace) -> None:
         if type_name != "x":
             parts.append(f"{count} {type_name}")
 
-    warning_count = sum(len(v) for v in unused_sources.values()) + len(
-        incomplete_conversations
-    )
+    warning_count = sum(len(v) for v in unused_sources.values())
     summary = f"Total sources: {', '.join(parts)}, {stats['removed']} removed, {warning_count} warnings"
     if warning_count > 0 and not args.warnings:
         summary += " (see --warnings)"
@@ -39,9 +35,6 @@ def cmd_sources(args: argparse.Namespace) -> None:
         if unused_sources:
             print()
             _print_unused_sources(unused_sources)
-        if incomplete_conversations:
-            print()
-            _print_incomplete_conversations(incomplete_conversations)
 
 
 def _print_unused_sources(unused_sources: dict[str, list[str]]) -> None:
@@ -84,26 +77,3 @@ def _find_unused_sources() -> dict[str, list[str]]:
             result[dir_path] = sorted(unused)
 
     return result
-
-
-def _find_incomplete_x_conversations() -> list[str]:
-    sources_x_dir = VAULT_DIR / "sources" / "x"
-    if not sources_x_dir.exists():
-        return []
-
-    incomplete = []
-    for yaml_file in sources_x_dir.glob("*.yaml"):
-        data = read_yaml(yaml_file)
-        if not data:
-            continue
-        conversation_xurl = data.get("conversation_xurl", "")
-        xurl = data.get("xurl", "")
-        if conversation_xurl and xurl and conversation_xurl != xurl:
-            incomplete.append(yaml_file.name)
-    return sorted(incomplete)
-
-
-def _print_incomplete_conversations(incomplete_conversations: list[str]) -> None:
-    print("INCOMPLETE CONVERSATIONS (root xurl != conversation_xurl) in sources/x/:")
-    for conv in incomplete_conversations:
-        print(f"- {conv}")

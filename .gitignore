@@ -45,6 +45,7 @@ Thumbs.db
 /topics
 /.hippo
 *.log
+AGENTS.md
 
 # Backup files
 *.backup

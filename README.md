@@ -1,6 +1,6 @@
 # Hippo
 
-Hippo is a tool for your AI agent to visualize, update and expand your personal knowledge locally on your device.
+Hippo helps AI agents gather, organize and visualize owner's knowledge locally on device. Use it to back up and organize your knowledge, help AI agents read your mind, or map and track your learning progress.
 
 ## Quick Start
 
@@ -29,19 +29,23 @@ hippo graph --warnings              # Show warnings
 hippo sources                       # View source stats
 hippo sources --ingest chatgpt --paths <path...>  # Ingest ChatGPT exports
 hippo sources --ingest chatgpt --paths <path...> --from <dt> --till <dt> --titles <titles>  # Ingest with filters
-hippo sources --ingest x --ids <post_ids>         # Ingest X posts by ID
-hippo sources --ingest x --own                     # Ingest own posts (1 page)
-hippo sources --ingest x --likes                   # Ingest liked posts (1 page)
-hippo sources --ingest x --bookmarks                # Ingest bookmarked posts (1 page)
-hippo sources --ingest x --own --new               # Catch-up: loop until existing
-hippo sources --ingest x --likes --new             # Catch-up: loop until existing
-hippo sources --ingest x --bookmarks --new         # Catch-up: loop until existing
-hippo sources --ingest x --own --count <N>         # Initial ingest: up to N posts
+hippo sources --ingest x --ids <post_ids>          # Ingest X posts by ID (batch)
+hippo sources --ingest x --own                     # Ingest own posts (1 page, 10 posts)
+hippo sources --ingest x --own --count <N>         # Paginate (derived), fetch up to N posts
 hippo sources --ingest x --own --since-id <id> --until-id <id>  # Targeted range
+hippo sources --ingest x --own --new               # Catch-up: paginate (10/page), stop on cached
+hippo sources --ingest x --likes                   # Ingest liked posts (1 page, 10 posts)
+hippo sources --ingest x --likes --count <N>       # Paginate (derived), fetch up to N posts
+hippo sources --ingest x --likes --new             # Catch-up: paginate (10/page), stop on cached
+hippo sources --ingest x --bookmarks               # Ingest bookmarked posts (1 page, 10 posts)
+hippo sources --ingest x --bookmarks --count <N>   # Paginate (derived), fetch up to N posts
+hippo sources --ingest x --bookmarks --new         # Catch-up: paginate (10/page), stop on cached
 hippo backup                        # Create backup
 hippo restore                       # Restore (most recent)
 hippo restore --version <timestamp> # Restore specific backup
 ```
+
+All `--ingest x` commands pull full conversation above the target post, and minimize API credits spent by always checking locally stored posts first.
 
 ## Warnings
 
@@ -78,18 +82,18 @@ Your notes here...
 
 ```
 vault/
-├── topics/            # Topic markdown files (source of truth)
-├── sources/           # Cached sources
-│   ├── chats/        # Chat exports
-│   └── x/            # X posts (YAML trees)
-└── .hippo/           # App internals
-    ├── graph.yaml     # Derived graph
-    ├── graph.html   # Visualization
-    ├── clusters.yaml # Cluster colors and titles
-    ├── sources_archive.yaml # Source references
-    ├── backups/     # Rolling backups
-    ├── diffs/       # Change logs
-    └── logs/        # Ingest logs
-        ├── chatgpt/ # ChatGPT ingest logs
-        └── x/       # X ingest logs
+├── topics/                   # Topics (.md), source of truth for CLI
+├── sources/                  # Cached sources
+│   ├── chats/                # ChatGPT (or other) conversations (.md)
+│   └── x/                    # X posts arranged in conversations (.yaml)
+└── .hippo/                   # App internals
+    ├── graph.yaml            # Derived graph (from topics)
+    ├── graph.html            # Visualization
+    ├── clusters.yaml         # Cluster colors and titles
+    ├── sources_archive.yaml  # Source references
+    ├── backups/              # Rolling backups
+    ├── diffs/                # Change logs
+    └── logs/                 # Ingest logs
+        ├── chatgpt/          # ChatGPT ingest logs
+        └── x/                # X ingest logs
 ```

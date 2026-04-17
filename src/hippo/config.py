@@ -100,22 +100,6 @@ def set_x_config(
     save_config(config)
 
 
-def get_x_ingest_max_parents() -> int:
-    value = _ensure_config_key("x_ingest_max_parents", "50")
-    if value:
-        try:
-            return int(value)
-        except ValueError:
-            pass
-    return 50
-
-
-def set_x_ingest_max_parents(max_parents: int) -> None:
-    config = load_config()
-    config["x_ingest_max_parents"] = str(max_parents)
-    save_config(config)
-
-
 def init_vault(vault_path: Path) -> None:
     vault_path = vault_path.resolve()
     if vault_path.exists() and any(vault_path.iterdir()):
@@ -128,7 +112,6 @@ def init_vault(vault_path: Path) -> None:
     (vault_path / "sources/x").mkdir(parents=True, exist_ok=True)
 
     _ensure_config_key("vault_dir", str(vault_path))
-    _ensure_config_key("x_ingest_max_parents", "50")
     _ensure_config_key("x_oauth2_client_id", "")
     _ensure_config_key("x_oauth2_client_secret", "")
 

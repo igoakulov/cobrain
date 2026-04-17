@@ -99,7 +99,7 @@ def get_output_filename(tree: XTree) -> str:
             author = parts[0]
             post_id = parts[-1]
             return f"{author}_{post_id}.yaml"
-    return f"{tree.root.author}_{tree.id}.yaml"
+    raise ValueError(f"conversation_xurl is not set for tree {tree.root.id}")
 
 
 def save_tree(tree: XTree) -> None:

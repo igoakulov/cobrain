@@ -1,4 +1,5 @@
 import argparse
+import signal
 import sys
 from pathlib import Path
 
@@ -27,6 +28,13 @@ def cmd_version(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    def _signal_handler(signum, frame):
+        print("\nInterrupted", file=sys.stderr)
+        sys.exit(130)
+
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
     parser = argparse.ArgumentParser(
         prog="hippo",
         description="Hippo - Local-first knowledge graph for agent-driven research.",

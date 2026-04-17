@@ -5,7 +5,7 @@ from hippo.parsers.x.models import (
 )
 from hippo.parsers.x.client import XClient, get_x_client
 from hippo.parsers.x.tree import (
-    expand_and_merge_tree,
+    batch_expand_and_merge_trees,
     sort_tree_by_time,
     arrange_into_tree,
     _find_tree_containing,
@@ -26,7 +26,7 @@ __all__ = [
     "XTreeNode",
     "XClient",
     "get_x_client",
-    "expand_and_merge_tree",
+    "batch_expand_and_merge_trees",
     "sort_tree_by_time",
     "arrange_into_tree",
     "_find_tree_containing",

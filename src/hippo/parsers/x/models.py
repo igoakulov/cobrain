@@ -69,6 +69,7 @@ class XTreeNode:
     post_type: str = "related"
     children: list["XTreeNode"] = field(default_factory=list)
     quoted_post_id: str | None = None
+    in_reply_to_post_id: str | None = None
     semantic_type: str = "post"
     conversation_id: str = ""
 

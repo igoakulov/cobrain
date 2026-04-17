@@ -1,5 +1,9 @@
-from hippo.directories import get_backups_dir, get_graph_path, get_topic_path
-from hippo.graph.cluster import get_clusters_path
+from hippo.directories import (
+    get_backups_dir,
+    get_clusters_path,
+    get_graph_path,
+    get_topic_path,
+)
 from hippo.graph.validation import ValidationError
 from hippo.yaml_utils import read_yaml, write_yaml
 

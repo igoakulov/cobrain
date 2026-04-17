@@ -1,5 +1,3 @@
-import datetime
-
 from hippo.parsers.x.models import (
     XPost,
     XTree,
@@ -76,25 +74,43 @@ def _find_node_by_id(root: XTreeNode, target_id: str) -> XTreeNode | None:
     return None
 
 
+_post_id_index: dict[str, tuple[XTree, XTreeNode]] | None = None
+_index_trees: dict[str, XTree] | None = None
+
+
+def _build_post_id_index(trees: dict[str, XTree]) -> dict[str, tuple[XTree, XTreeNode]]:
+    index: dict[str, tuple[XTree, XTreeNode]] = {}
+    for tree in trees.values():
+        for node in _iter_all_nodes(tree.root):
+            index[node.id] = (tree, node)
+    return index
+
+
 def _find_tree_containing(
     trees: dict[str, XTree], post_id: str
 ) -> tuple[XTree, XTreeNode] | None:
-    for tree in trees.values():
-        node = _find_node_by_id(tree.root, post_id)
-        if node:
-            return (tree, node)
+    global _post_id_index, _index_trees
+
+    if trees is not _index_trees or _post_id_index is None:
+        _index_trees = trees
+        _post_id_index = _build_post_id_index(trees)
+
+    result = _post_id_index.get(post_id)
+    if result is not None:
+        return result
     return None
 
 
-def _post_to_node(post: XPost) -> XTreeNode:
+def _post_to_node(post: XPost, post_type: str | None = None) -> XTreeNode:
     return XTreeNode(
         id=post.id,
         author=post.author_username,
         created_at=post.created_at,
         text=post.text,
-        post_type=post.post_type,
+        post_type=post_type or post.post_type,
         children=[],
         quoted_post_id=post.quoted_post_id,
+        in_reply_to_post_id=post.in_reply_to_post_id,
         semantic_type=getattr(post, "semantic_type", "post"),
         conversation_id=post.conversation_id,
     )
@@ -111,138 +127,145 @@ def arrange_into_tree(posts_chain: list[XPost]) -> XTree:
     return _build_x_tree(oldest, "")
 
 
-def merge_posts(
-    posts_chain: list[XPost],
-    parent_tree: XTree,
-    parent_node: XTreeNode,
-) -> None:
-    posts_chain = list(reversed(posts_chain))
-    branch_root = _post_to_node(posts_chain[0])
-    current = branch_root
-    for post in posts_chain[1:]:
-        node = _post_to_node(post)
-        current.children.append(node)
-        current = node
-    parent_node.children.append(branch_root)
-    truncated_updated = datetime.datetime.utcnow().strftime("%Y-%m-%dT%M:%SZ")
-    parent_tree.updated_at = truncated_updated
-
-
-def _attach_chain_to_tree(posts_chain: list[XPost], tree: XTree) -> None:
-    """Attach fetched ancestors to tree root when no merge happened.
-
-    posts_chain is [target, parent1, parent2, ...] where target is tree.root.
-    In X, oldest post is root of conversation - target is descendant.
-    So we need to rebuild the tree with oldest as root.
-    """
-    if len(posts_chain) <= 1:
-        return
-
-    posts_chain = list(reversed(posts_chain))
-    oldest = _post_to_node(posts_chain[0])
-    tree.root = oldest
-    tree.id = oldest.id
-
-    current = oldest
-    for post in posts_chain[1:]:
-        node = _post_to_node(post)
-        current.children.append(node)
-        current = node
-
-
-def expand_and_merge_tree(
-    tree: XTree,
-    cached_trees: dict[str, XTree],
+def batch_expand_and_merge_trees(
     new_trees: dict[str, XTree],
-    updated_trees: set[str] | None = None,
+    cached_trees: dict[str, XTree],
+    updated_tree_ids: set[str] | None = None,
 ) -> list[str]:
-    """Walk parent chain and merge into existing trees.
+    """Batch expand all trees with parent traversal.
 
-    Returns list of related_ids (ancestor posts fetched from API).
+    Pass-based algorithm:
+    1. Collect parent_ids from current trees
+    2. Thin: check new_trees → attach if found
+    3. Thin: check cached_trees → attach if found
+    4. Batch fetch remaining from API
+    5. Create trees for fetched parents, attach children
+    6. Two-stage merge: new_trees→new_trees, then →cached_trees
+
+    Returns all related_ids collected.
     """
     from hippo.parsers.x.client import get_x_client
 
     client = get_x_client()
-
-    root = tree.root
-    post_id = root.id
-
-    found = _find_tree_containing(cached_trees, post_id)
-    if found:
-        return []
-
-    return _expand_tree(tree, cached_trees, new_trees, client, updated_trees)
-
-
-def _expand_tree(
-    tree: XTree,
-    cached_trees: dict[str, XTree],
-    new_trees: dict[str, XTree],
-    client,
-    updated_trees: set[str] | None = None,
-) -> list[str]:
-    """Walk parent chain of a tree and merge with existing trees."""
-    root = tree.root
-    post_id = root.id
-
-    posts_chain: list[XPost] = []
     related_ids: list[str] = []
+    target_tree_ids = set(new_trees.keys())
+    incomplete_trees = dict(new_trees)
 
-    initial_post = client.get_post_by_id(post_id, root.post_type)
-    if not initial_post:
-        return []
-    posts_chain.append(initial_post)
+    while incomplete_trees:
+        collected_parents: dict[str, list[XTree]] = {}
 
-    while True:
-        parent_id = (
-            posts_chain[-1].in_reply_to_post_id or posts_chain[-1].quoted_post_id
-        )
-        if not parent_id:
+        for tree in incomplete_trees.values():
+            parent_id = tree.root.in_reply_to_post_id or tree.root.quoted_post_id
+            if not parent_id:
+                continue
+
+            if parent_id not in collected_parents:
+                collected_parents[parent_id] = []
+            collected_parents[parent_id].append(tree)
+
+        if not collected_parents:
             break
 
-        found = _find_tree_containing(cached_trees, parent_id)
-        if found:
-            parent_tree, parent_node = found
-            merge_posts(posts_chain, parent_tree, parent_node)
-            if updated_trees is not None:
-                updated_trees.add(parent_tree.root.id)
-            parent_root_id = parent_tree.root.id
-            _continue_walking_from(root.id, parent_root_id, cached_trees, new_trees)
-            return related_ids
+        parent_ids_to_fetch = list(collected_parents.keys())
 
-        found = _find_tree_containing(new_trees, parent_id)
-        if found:
-            parent_tree, parent_node = found
-            merge_posts(posts_chain, parent_tree, parent_node)
-            if updated_trees is not None:
-                updated_trees.add(parent_tree.root.id)
-            parent_root_id = parent_tree.root.id
-            _continue_walking_from(root.id, parent_root_id, cached_trees, new_trees)
-            return related_ids
+        for parent_id in list(parent_ids_to_fetch):
+            found = _find_tree_containing(new_trees, parent_id)
+            if found:
+                parent_tree, parent_node = found
+                _attach_parent_to_children(collected_parents[parent_id], parent_node)
+                for child_tree in collected_parents[parent_id]:
+                    if child_tree.id in new_trees:
+                        del new_trees[child_tree.id]
+                del collected_parents[parent_id]
+                continue
 
-        parent = client.get_post_by_id(parent_id, "related")
-        if not parent:
+            found = _find_tree_containing(cached_trees, parent_id)
+            if found:
+                parent_tree, parent_node = found
+                _attach_parent_to_children(collected_parents[parent_id], parent_node)
+                if updated_tree_ids is not None:
+                    updated_tree_ids.add(parent_tree.root.id)
+                for child_tree in collected_parents[parent_id]:
+                    if child_tree.id in new_trees:
+                        del new_trees[child_tree.id]
+                del collected_parents[parent_id]
+                continue
+
+        if collected_parents:
+            parent_ids_to_fetch = list(collected_parents.keys())
+            fetched = client.get_posts_by_ids(parent_ids_to_fetch)
+            fetched_map = {p.id: p for p in fetched if p}
+
+            for parent_id, children in collected_parents.items():
+                parent_post = fetched_map.get(parent_id)
+                if parent_post:
+                    related_ids.append(parent_id)
+                    parent_node = _post_to_node(parent_post, "related")
+                    _attach_parent_to_children(children, parent_node)
+
+                    for child_tree in children:
+                        if child_tree.id in new_trees:
+                            del new_trees[child_tree.id]
+
+                    new_tree = XTree(
+                        id=parent_node.id,
+                        root=parent_node,
+                        created_at=parent_node.created_at[:19] + "Z"
+                        if parent_node.created_at
+                        else "",
+                        updated_at=parent_node.created_at[:19] + "Z"
+                        if parent_node.created_at
+                        else "",
+                        conversation_xurl=f"{parent_node.author}/status/{parent_node.id}",
+                    )
+                    new_trees[parent_node.id] = new_tree
+                else:
+                    for child_tree in children:
+                        if child_tree.id in target_tree_ids:
+                            child_tree.root.in_reply_to_post_id = None
+                            child_tree.root.quoted_post_id = None
+                        elif child_tree.id in new_trees:
+                            del new_trees[child_tree.id]
+
+            _merge_by_overlap(new_trees, new_trees, updated_tree_ids)
+            _merge_by_overlap(new_trees, cached_trees, updated_tree_ids)
+
+            global _post_id_index
+            _post_id_index = None
+
+            incomplete_trees = {
+                tid: tree
+                for tid, tree in new_trees.items()
+                if tree.root.in_reply_to_post_id or tree.root.quoted_post_id
+            }
+            if not incomplete_trees:
+                break
+        else:
             break
-        related_ids.append(parent_id)
-        posts_chain.append(parent)
-
-    if len(posts_chain) > 1:
-        _attach_chain_to_tree(posts_chain, tree)
 
     return related_ids
 
 
-def _continue_walking_from(
-    merged_root_id: str,
-    merged_into_id: str,
-    cached_trees: dict[str, XTree],
-    new_trees: dict[str, XTree],
-) -> None:
-    """Mark source tree as consumed after merge.
+def _attach_parent_to_children(children: list[XTree], parent_node: XTreeNode) -> None:
+    for child_tree in children:
+        parent_node.children.append(child_tree.root)
 
-    After tree A merges into tree B, tree A's root is marked as consumed
-    so it won't be saved as a separate file. The merged-into tree B
-    will be saved via the normal loop.
-    """
-    if merged_root_id in new_trees:
-        del new_trees[merged_root_id]
+
+def _merge_by_overlap(
+    new_trees: dict[str, XTree],
+    cached_trees: dict[str, XTree],
+    updated_tree_ids: set[str] | None = None,
+) -> None:
+    for tree in list(new_trees.values()):
+        for node in _iter_all_nodes(tree.root):
+            if node.id in cached_trees:
+                cached_tree = cached_trees[node.id]
+                if tree.root.id != cached_tree.root.id:
+                    overlap_node = _find_node_by_id(cached_tree.root, node.id)
+                    if overlap_node:
+                        overlap_node.children.append(tree.root)
+                    if updated_tree_ids is not None:
+                        updated_tree_ids.add(cached_tree.root.id)
+                    if tree in list(new_trees.values()):
+                        del new_trees[tree.root.id]
+                break

@@ -107,7 +107,7 @@ Before write operations:
 
 **Sources:** `hippo sources [--warnings]`
 - Summary: `Total sources: N chats, M X conversations, K removed, X warnings`
-- With `--warnings`: Show UNUSED SOURCES and INCOMPLETE CONVERSATIONS
+- With `--warnings`: Show UNUSED SOURCES
 
 **Ingest:** `hippo sources --ingest chatgpt --paths <path>... [--from <datetime>] [--till <datetime>] [--titles <titles>]`
 - Ingest ChatGPT exports
