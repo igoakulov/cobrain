@@ -23,6 +23,17 @@ X_TWEET_FIELDS = [
 ]
 X_USER_FIELDS = ["username"]
 
+POST_TYPE_IDS = "ids"
+POST_TYPE_OWN = "own"
+POST_TYPE_LIKED = "liked"
+POST_TYPE_BOOKMARKED = "bookmarked"
+POST_TYPE_RELATED = "related"
+
+SEMANTIC_TYPE_POST = "post"
+SEMANTIC_TYPE_REPLY = "reply"
+SEMANTIC_TYPE_QUOTE = "quote"
+SEMANTIC_TYPE_REPOST = "repost"
+
 
 def calculate_page_size(count: int) -> int:
     if count <= 0:
@@ -82,7 +93,7 @@ class XClient:
     def get_post_by_id(
         self,
         post_id: str,
-        post_type: str = "ids",
+        post_type: str = POST_TYPE_IDS,
     ) -> XPost | None:
         existing = load_post_from_existing(post_id)
         if existing:
@@ -111,7 +122,7 @@ class XClient:
             return None
 
     def get_posts_by_ids(
-        self, post_ids: list[str], post_type: str = "ids"
+        self, post_ids: list[str], post_type: str = POST_TYPE_IDS
     ) -> list[XPost]:
         if not post_ids:
             return []
@@ -161,7 +172,7 @@ class XClient:
         user_id = self._get_user_id()
         return self._fetch_posts(
             lambda params: self._get_client().users.get_posts(user_id, **params),
-            "own",
+            POST_TYPE_OWN,
             existing_ids,
             since_id=since_id,
             until_id=until_id,
@@ -175,14 +186,7 @@ class XClient:
         existing_ids: set[str] | None = None,
         is_new: bool = False,
     ) -> list[XPost]:
-        user_id = self._get_user_id()
-        return self._fetch_posts(
-            lambda params: self._get_client().users.get_liked_posts(user_id, **params),
-            "liked",
-            existing_ids,
-            count=count,
-            _new=is_new,
-        )
+        return self._get_posts_by_type(POST_TYPE_LIKED, count, existing_ids, is_new)
 
     def get_bookmarked_posts(
         self,
@@ -190,13 +194,37 @@ class XClient:
         existing_ids: set[str] | None = None,
         is_new: bool = False,
     ) -> list[XPost]:
+        return self._get_posts_by_type(
+            POST_TYPE_BOOKMARKED, count, existing_ids, is_new
+        )
+
+    def _get_posts_by_type(
+        self,
+        post_type: str,
+        count: int | None,
+        existing_ids: set[str] | None,
+        is_new: bool,
+    ) -> list[XPost]:
         user_id = self._get_user_id()
+        client = self._get_client()
+
+        def get_liked(params):
+            return client.users.get_liked_posts(user_id, **params)
+
+        def get_bookmarked(params):
+            return client.users.get_bookmarks(user_id, **params)
+
+        def get_empty(params):
+            return []
+
+        if post_type == POST_TYPE_LIKED:
+            fetch_fn = get_liked
+        elif post_type == POST_TYPE_BOOKMARKED:
+            fetch_fn = get_bookmarked
+        else:
+            fetch_fn = get_empty
         return self._fetch_posts(
-            lambda params: self._get_client().users.get_bookmarks(user_id, **params),
-            "bookmarked",
-            existing_ids,
-            count=count,
-            _new=is_new,
+            fetch_fn, post_type, existing_ids, count=count, _new=is_new
         )
 
     def _fetch_posts(
@@ -251,9 +279,7 @@ class XClient:
 
         return all_posts
 
-    def _parse_post_data(
-        self, data: dict, includes: dict, post_type: str = "context"
-    ) -> XPost:
+    def _parse_post_data(self, data: dict, includes: dict, post_type: str) -> XPost:
         author_id = data.get("author_id", "")
         author_username = "unknown"
 
@@ -288,13 +314,13 @@ class XClient:
             referenced_tweets.append({"type": ref_type, "id": str(ref.get("id"))})
 
         if has_retweet:
-            semantic_type = "repost"
+            semantic_type = SEMANTIC_TYPE_REPOST
         elif quoted_post_id:
-            semantic_type = "quote"
+            semantic_type = SEMANTIC_TYPE_QUOTE
         elif in_reply_to_post_id:
-            semantic_type = "reply"
+            semantic_type = SEMANTIC_TYPE_REPLY
         else:
-            semantic_type = "post"
+            semantic_type = SEMANTIC_TYPE_POST
 
         if "note_tweet" in data:
             text = data.get("note_tweet", {}).get("text", data.get("text", ""))

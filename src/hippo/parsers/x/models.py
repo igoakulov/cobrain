@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+POST_TYPE_RELATED = "related"
+
 
 @dataclass
 class XPost:
@@ -13,7 +15,7 @@ class XPost:
     in_reply_to_post_id: str | None
     referenced_tweets: list[dict] = field(default_factory=list)
     quoted_post_id: str | None = None
-    post_type: str = "related"
+    post_type: str = POST_TYPE_RELATED
     children: list["XPost"] = field(default_factory=list)
     semantic_type: str = "post"
 
@@ -46,7 +48,7 @@ def _post_from_existing(data: dict) -> XPost:
         in_reply_to_post_id=data.get("in_reply_to_post_id"),
         referenced_tweets=[],
         quoted_post_id=data.get("quoted_post_id"),
-        post_type=data.get("type", "related"),
+        post_type=data.get("type", POST_TYPE_RELATED),
         semantic_type=data.get("semantic_type", "post"),
     )
 
@@ -66,7 +68,7 @@ class XTreeNode:
     author: str
     created_at: str
     text: str
-    post_type: str = "related"
+    post_type: str = POST_TYPE_RELATED
     children: list["XTreeNode"] = field(default_factory=list)
     quoted_post_id: str | None = None
     in_reply_to_post_id: str | None = None
@@ -91,9 +93,9 @@ class XTreeNode:
         parts = xurl.split("/status/")
         author = parts[0] if len(parts) > 1 else "unknown"
         post_id = parts[1] if len(parts) > 1 else ""
-        type_value = data.get("type", "related")
+        type_value = data.get("type", POST_TYPE_RELATED)
         parts_type = type_value.split("-", 1)
-        post_type = parts_type[0] if len(parts_type) > 0 else "related"
+        post_type = parts_type[0] if len(parts_type) > 0 else POST_TYPE_RELATED
         semantic_type = parts_type[1] if len(parts_type) > 1 else "post"
         return XTreeNode(
             id=post_id,

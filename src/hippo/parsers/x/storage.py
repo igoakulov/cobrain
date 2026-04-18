@@ -73,19 +73,19 @@ def load_post_from_existing(post_id: str) -> dict | None:
         if not data:
             continue
 
-        def find_node(data: dict, target_id: str) -> dict | None:
+        def _find_node(data: dict, target_id: str) -> dict | None:
             if "xurl" in data:
                 parts = data["xurl"].split("/status/")
                 if len(parts) == 2 and parts[1] == target_id:
                     return data
             if "children" in data:
                 for child in data["children"]:
-                    result = find_node(child, target_id)
+                    result = _find_node(child, target_id)
                     if result:
                         return result
             return None
 
-        post = find_node(data, post_id)
+        post = _find_node(data, post_id)
         if post:
             return post
 
@@ -102,9 +102,19 @@ def get_output_filename(tree: XTree) -> str:
     raise ValueError(f"conversation_xurl is not set for tree {tree.root.id}")
 
 
-def save_tree(tree: XTree) -> None:
-    from hippo.parsers.x.yaml import tree_to_yaml
+def tree_to_yaml(tree: XTree) -> dict:
+    truncated_updated = tree.updated_at[:20] if tree.updated_at else ""
+    result = {}
+    if tree.conversation_xurl:
+        result["conversation_xurl"] = tree.conversation_xurl
+    result["conversation_updated_at"] = truncated_updated
+    root_dict = tree.root.to_dict()
+    for key, value in root_dict.items():
+        result[key] = value
+    return result
 
+
+def save_tree(tree: XTree) -> None:
     trees_dir = get_x_trees_dir()
     trees_dir.mkdir(parents=True, exist_ok=True)
     filename = get_output_filename(tree)

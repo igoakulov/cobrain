@@ -1,7 +1,6 @@
 import argparse
 import re
 import sys
-import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
@@ -19,110 +18,57 @@ from hippo.parsers.x import (
     sort_tree_by_time,
     _find_tree_containing,
 )
+from hippo.parsers.x.client import (
+    POST_TYPE_IDS,
+    POST_TYPE_OWN,
+    POST_TYPE_LIKED,
+    POST_TYPE_BOOKMARKED,
+)
 from hippo.directories import get_x_log_path, get_x_logs_dir
 from hippo.sources_archive import add_reference
 from hippo.yaml_utils import write_yaml
 
-
-_timing_start: float | None = None
-_total_start: float | None = None
-_lookup_count: int = 0
-_lookup_time: float = 0.0
-_lookup_section_start: float | None = None
+X_ENDPOINTS = (POST_TYPE_OWN, POST_TYPE_LIKED, POST_TYPE_BOOKMARKED)
 
 
-def _start_total() -> None:
-    global _total_start
-    _total_start = time.perf_counter()
+def _validate_args(args: argparse.Namespace) -> None:
+    requires_own = ("since_id", "until_id")
+    mutually_exclusive = (
+        ("new", "count"),
+        ("new", "since_id"),
+        ("new", "until_id"),
+        ("count", "since_id"),
+        ("count", "until_id"),
+    )
 
+    for arg in requires_own:
+        if getattr(args, arg) and not args.own:
+            print(
+                f"Error: --{arg.replace('_', '-')} only works with --own",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
-def _end_total() -> float:
-    global _total_start
-    if _total_start is None:
-        return 0.0
-    elapsed = time.perf_counter() - _total_start
-    return elapsed
-
-
-def _start_timing() -> None:
-    global _timing_start
-    _timing_start = time.perf_counter()
-
-
-def _end_timing(label: str, count: int = 0) -> None:
-    global _timing_start
-    if _timing_start is None:
-        return
-    elapsed = time.perf_counter() - _timing_start
-    if count > 0:
-        print(f"{label}: {elapsed:.3f}s ({count}, avg {elapsed / count:.3f}s)")
-    else:
-        print(f"{label}: {elapsed:.3f}s (0)")
-    _timing_start = None
-
-
-def _start_lookup_section() -> None:
-    global _lookup_section_start
-    _lookup_section_start = time.perf_counter()
-
-
-def _end_lookup_section() -> None:
-    global _lookup_section_start, _lookup_count, _lookup_time
-    if _lookup_section_start is not None:
-        _lookup_time += time.perf_counter() - _lookup_section_start
-        _lookup_section_start = None
-
-
-def _tick_lookup() -> None:
-    global _lookup_count
-    _lookup_count += 1
-
-
-def _report_lookup_timing(label: str) -> None:
-    global _lookup_time, _lookup_count
-    if _lookup_count > 0:
-        print(
-            f"{label}: {_lookup_count} lookups, {_lookup_time:.3f}s (avg {_lookup_time / _lookup_count:.3f}s)"
-        )
-    else:
-        print(f"{label}: 0 lookups, 0.000s")
-    _lookup_time = 0.0
-    _lookup_count = 0
+    for arg1, arg2 in mutually_exclusive:
+        if getattr(args, arg1) and getattr(args, arg2):
+            print(
+                f"Error: --{arg1.replace('_', '-')} and --{arg2.replace('_', '-')} are mutually exclusive",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
 
 def cmd_ingest_x(args: argparse.Namespace) -> None:
-    if args.since_id and not args.own:
-        print("Error: --since-id only works with --own", file=sys.stderr)
-        sys.exit(1)
-    if args.until_id and not args.own:
-        print("Error: --until-id only works with --own", file=sys.stderr)
-        sys.exit(1)
-    if args.new and args.count:
-        print("Error: --new and --count are mutually exclusive", file=sys.stderr)
-        sys.exit(1)
-    if args.count and args.since_id:
-        print("Error: --count and --since-id are mutually exclusive", file=sys.stderr)
-        sys.exit(1)
-    if args.count and args.until_id:
-        print("Error: --count and --until-id are mutually exclusive", file=sys.stderr)
-        sys.exit(1)
-    if args.new and args.since_id:
-        print("Error: --new and --since-id are mutually exclusive", file=sys.stderr)
-        sys.exit(1)
-    if args.new and args.until_id:
-        print("Error: --new and --until-id are mutually exclusive", file=sys.stderr)
-        sys.exit(1)
+    _validate_args(args)
 
     post_ids = _parse_post_args(args.ids)
-    endpoint = (
-        "own"
-        if args.own
-        else "likes"
-        if args.likes
-        else "bookmarks"
-        if args.bookmarks
-        else None
-    )
+    endpoint = None
+    if args.own:
+        endpoint = POST_TYPE_OWN
+    elif args.likes:
+        endpoint = POST_TYPE_LIKED
+    elif args.bookmarks:
+        endpoint = POST_TYPE_BOOKMARKED
 
     try:
         client = get_x_client(authorization_code=args.authorization_code)
@@ -143,7 +89,6 @@ def cmd_ingest_x(args: argparse.Namespace) -> None:
 def _ingest_posts(
     client, args: argparse.Namespace, post_ids: list[str], endpoint: str | None
 ) -> None:
-    _start_total()
     trees_dir = get_x_trees_dir()
     logs_dir = get_x_logs_dir()
     trees_dir.mkdir(parents=True, exist_ok=True)
@@ -156,35 +101,25 @@ def _ingest_posts(
 
     # Step 2 & 3: Fetch all target posts
     target_posts: list[XPost] = []
+    target_ids_returned: list[str] = []
 
     if post_ids:
-        _start_timing()
-        _start_lookup_section()
-
         new_post_ids = []
         for pid in post_ids:
-            if _find_tree_containing(cached_trees, pid):
-                _tick_lookup()
-            else:
+            if not _find_tree_containing(cached_trees, pid):
                 new_post_ids.append(pid)
-                _tick_lookup()
-
-        _end_lookup_section()
-        _report_lookup_timing("Tree lookup")
 
         if new_post_ids:
-            post_type = endpoint if endpoint else "ids"
+            post_type = endpoint if endpoint else POST_TYPE_IDS
             fetched = client.get_posts_by_ids(new_post_ids, post_type=post_type)
             for post in fetched:
                 if post:
-                    target_posts.append(post)
+                    target_ids_returned.append(post.id)
+                    if not _find_tree_containing(cached_trees, post.id):
+                        target_posts.append(post)
 
-        _end_timing("Fetch --ids", len(post_ids))
-
-    elif endpoint in ("own", "likes", "bookmarks"):
-        _start_timing()
+    elif endpoint in X_ENDPOINTS:
         existing_ids = get_existing_post_ids()
-        _end_timing("Load existing IDs", len(existing_ids) if existing_ids else 0)
 
         if args.authorization_code:
             client._token_manager.authorization_code = args.authorization_code
@@ -198,7 +133,7 @@ def _ingest_posts(
         count = args.count
         is_new = args.new if args.new else False
 
-        if endpoint == "own":
+        if endpoint == POST_TYPE_OWN:
             posts = client.get_own_posts(
                 since_id=since_id,
                 until_id=until_id,
@@ -206,11 +141,11 @@ def _ingest_posts(
                 existing_ids=existing_ids,
                 is_new=is_new,
             )
-        elif endpoint == "likes":
+        elif endpoint == POST_TYPE_LIKED:
             posts = client.get_liked_posts(
                 count=count, existing_ids=existing_ids, is_new=is_new
             )
-        elif endpoint == "bookmarks":
+        elif endpoint == POST_TYPE_BOOKMARKED:
             posts = client.get_bookmarked_posts(
                 count=count, existing_ids=existing_ids, is_new=is_new
             )
@@ -218,15 +153,9 @@ def _ingest_posts(
             posts = []
 
         for post in posts:
-            _start_lookup_section()
-            if _find_tree_containing(cached_trees, post.id):
-                _end_lookup_section()
-                _tick_lookup()
-                continue
-            _end_lookup_section()
-            _tick_lookup()
-            target_posts.append(post)
-        _report_lookup_timing("Tree lookup")
+            target_ids_returned.append(post.id)
+            if not _find_tree_containing(cached_trees, post.id):
+                target_posts.append(post)
 
     else:
         print(
@@ -249,14 +178,10 @@ def _ingest_posts(
     # Step 5: Run batch expand_and_merge_trees
     related_ids: list[str] = []
     updated_tree_ids: set[str] = set()
-    _start_timing()
 
     related_ids = batch_expand_and_merge_trees(
         new_trees, cached_trees, updated_tree_ids
     )
-
-    tree_count = len(new_trees)
-    _end_timing("Parent traversal", tree_count)
 
     # Step 6: Save unmerged trees
     created = []
@@ -271,9 +196,6 @@ def _ingest_posts(
         add_reference("x", f"sources/x/{filename}", [])
         return filename
 
-    _start_timing()
-    save_count = 0
-
     all_trees_to_save = list(new_trees.values())
     all_trees_to_save.extend(
         [t for t in cached_trees.values() if t.root.id in updated_tree_ids]
@@ -287,32 +209,29 @@ def _ingest_posts(
             f.result()
 
     for tree in new_trees.values():
-        save_count += 1
         created.append(get_output_filename(tree))
 
     for tree in cached_trees.values():
         if tree.root.id in updated_tree_ids:
-            save_count += 1
             updated.append(get_output_filename(tree))
 
-    _timing_count = save_count
-    _end_timing("Save trees", save_count)
+    posts_added = len(target_ids) + len(related_ids)
+    files_created = len(created)
+    files_updated = len(updated)
 
     log_data = _build_log_data(
         args,
         endpoint,
-        target_ids,
+        target_ids_returned,
         related_ids,
+        posts_added,
+        files_created,
+        files_updated,
         warnings,
     )
 
     log_path = get_x_log_path(ingest_timestamp)
     write_yaml(log_path, log_data)
-
-    # Simple counts - reuse what we already have
-    posts_added = len(target_ids) + len(related_ids)
-    files_created = len(created)
-    files_updated = len(updated)
 
     parts = []
     if posts_added > 0 or files_created > 0 or files_updated > 0:
@@ -332,19 +251,18 @@ def _ingest_posts(
             print(f"- {warning}")
     print(f"Log: {log_path}")
 
-    # Total run time
-    elapsed = _end_total()
-    print(f"Total ingest: {elapsed:.3f}s")
-
 
 def _build_log_data(
     args: argparse.Namespace,
     endpoint: str | None,
-    target_ids: list[str],
-    related_ids: list[str],
+    target_ids_returned: list[str],
+    related_ids_returned: list[str],
+    posts_added: int,
+    files_created: int,
+    files_updated: int,
     warnings: list[str] | None = None,
 ) -> dict:
-    if endpoint and endpoint in ("own", "likes", "bookmarks"):
+    if endpoint and endpoint in X_ENDPOINTS:
         command_parts = [f"hippo sources --ingest x --{endpoint}"]
         if args.new:
             command_parts.append("--new")
@@ -359,12 +277,23 @@ def _build_log_data(
         command = f"hippo sources --ingest x --ids {args.ids}"
 
     log_data = {
-        "command": command,
-        "target_ids": f"[{','.join(sorted(target_ids))}]" if target_ids else "[]",
-        "target_ids_count": len(target_ids) if target_ids else 0,
-        "related_ids": f"[{','.join(sorted(related_ids))}]" if related_ids else "[]",
-        "related_ids_count": len(related_ids),
         "created_at": datetime.utcnow().strftime("%Y%m%dT%H%M%S"),
+        "command": command,
+        "target_ids_returned": (
+            f"[{','.join(sorted(target_ids_returned))}]"
+            if target_ids_returned
+            else "[]"
+        ),
+        "target_ids_returned_count": len(target_ids_returned),
+        "related_ids_returned": (
+            f"[{','.join(sorted(related_ids_returned))}]"
+            if related_ids_returned
+            else "[]"
+        ),
+        "related_ids_returned_count": len(related_ids_returned),
+        "posts_added": posts_added,
+        "files_created": files_created,
+        "files_updated": files_updated,
     }
 
     if warnings:

@@ -95,10 +95,7 @@ def _find_tree_containing(
         _index_trees = trees
         _post_id_index = _build_post_id_index(trees)
 
-    result = _post_id_index.get(post_id)
-    if result is not None:
-        return result
-    return None
+    return _post_id_index.get(post_id)
 
 
 def _post_to_node(post: XPost, post_type: str | None = None) -> XTreeNode:
@@ -166,9 +163,7 @@ def batch_expand_and_merge_trees(
         if not collected_parents:
             break
 
-        parent_ids_to_fetch = list(collected_parents.keys())
-
-        for parent_id in list(parent_ids_to_fetch):
+        for parent_id in list(collected_parents.keys()):
             found = _find_tree_containing(new_trees, parent_id)
             if found:
                 parent_tree, parent_node = found
@@ -224,24 +219,21 @@ def batch_expand_and_merge_trees(
                         if child_tree.id in target_tree_ids:
                             child_tree.root.in_reply_to_post_id = None
                             child_tree.root.quoted_post_id = None
-                        elif child_tree.id in new_trees:
-                            del new_trees[child_tree.id]
+                        else:
+                            child_tree.root.in_reply_to_post_id = None
+                            child_tree.root.quoted_post_id = None
 
-            _merge_by_overlap(new_trees, new_trees, updated_tree_ids)
-            _merge_by_overlap(new_trees, cached_trees, updated_tree_ids)
+        _merge_by_overlap(new_trees, new_trees, updated_tree_ids)
+        _merge_by_overlap(new_trees, cached_trees, updated_tree_ids)
 
-            global _post_id_index
-            _post_id_index = None
+        global _post_id_index
+        _post_id_index = None
 
-            incomplete_trees = {
-                tid: tree
-                for tid, tree in new_trees.items()
-                if tree.root.in_reply_to_post_id or tree.root.quoted_post_id
-            }
-            if not incomplete_trees:
-                break
-        else:
-            break
+        incomplete_trees = {
+            tid: tree
+            for tid, tree in new_trees.items()
+            if tree.root.in_reply_to_post_id or tree.root.quoted_post_id
+        }
 
     return related_ids
 
