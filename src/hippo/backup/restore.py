@@ -73,7 +73,6 @@ def restore_backup(timestamp: str) -> bool:
 
     graph_data = {
         "topics": backup_data["topics"],
-        "clusters": backup_data["clusters"],
         "word_counts": backup_data.get("word_counts", {}),
     }
     write_yaml(graph_path, graph_data)
@@ -83,11 +82,6 @@ def restore_backup(timestamp: str) -> bool:
     clusters_path = get_clusters_path()
     if backup_clusters_path.exists():
         clusters_path.write_text(backup_clusters_path.read_text())
-    else:
-        from hippo.models import Cluster
-
-        clusters = [Cluster.from_dict(c) for c in backup_data.get("clusters", [])]
-        write_yaml(clusters_path, {"clusters": [c.to_dict() for c in clusters]})
 
     for topic_data in backup_data["topics"]:
         topic_id = topic_data["id"]

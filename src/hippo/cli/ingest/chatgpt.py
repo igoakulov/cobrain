@@ -10,7 +10,6 @@ from hippo.directories import (
     get_chats_logs_dir,
     get_chat_log_path,
 )
-from hippo.sources_archive import add_reference
 from hippo.yaml_utils import write_yaml
 
 
@@ -167,9 +166,6 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
     if log_entries:
         log_path = get_chat_log_path(ingest_timestamp)
         write_yaml(log_path, log_entries)
-
-    for entry in log_entries:
-        add_reference("chat", entry["output_file"], [])
 
     total_created = len(created_files)
     total_updated = len(updated_files)

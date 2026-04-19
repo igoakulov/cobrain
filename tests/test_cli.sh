@@ -3,6 +3,8 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+export PATH="$(pwd)/.venv/bin:$PATH"
+
 TEST_VAULT="test-vault"
 
 rm -rf "$TEST_VAULT"
@@ -122,50 +124,50 @@ hippo topics --ids a --sync
 echo "=== topics --ids nonexistent (error case) ==="
 hippo topics --ids nonexistent 2>&1 || echo "Expected error for nonexistent topic"
 
-echo "=== topics --ids a --meta single field ==="
-hippo topics --ids a --meta progress=completed
+echo "=== topics --ids a --set single field ==="
+hippo topics --ids a --set progress=completed
 
-echo "=== topics --ids b,c --meta multiple fields ==="
-hippo topics --ids b,c --meta cluster=nlp progress=started sources="[https://b.com,https://c.com]"
+echo "=== topics --ids b,c --set multiple fields ==="
+hippo topics --ids b,c --set cluster=nlp progress=started sources="[https://b.com,https://c.com]"
 
-echo "=== topics --ids a --meta --sync with multiple changes ==="
-hippo topics --ids a --meta progress=new cluster=ml aliases="[alias-a-new]" --sync
+echo "=== topics --ids a --set --sync with multiple changes ==="
+hippo topics --ids a --set progress=new cluster=ml aliases="[alias-a-new]" --sync
 
 echo "=== graph (full) ==="
-hippo graph | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'topics: {len(d[\"topics\"])}, clusters: {len(d[\"clusters\"])}')"
+hippo graph | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print(f'topics: {len(d[\"topics\"])}')"
 
 echo "=== graph --sync (pre-sync then full) ==="
-hippo graph --sync | tail -n +2 | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'topics: {len(d[\"topics\"])}')"
+hippo graph --sync | tail -n +2 | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print(f'topics: {len(d[\"topics\"])}')"
 
 echo "=== graph --from a ==="
-hippo graph --from a | python3 -c "import json,sys; d=json.load(sys.stdin); print([t['id'] for t in d])"
+hippo graph --from a | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print([t['id'] for t in d])"
 
 echo "=== graph --from a --depth 1 ==="
-hippo graph --from a --depth 1 | python3 -c "import json,sys; d=json.load(sys.stdin); print([t['id'] for t in d])"
+hippo graph --from a --depth 1 | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print([t['id'] for t in d])"
 
-echo "=== graph --from b --to c (JSON output) ==="
-hippo graph --from b --to c | python3 -c "import json,sys; d=json.load(sys.stdin); print(f'path length: {len(d)}, ids: {[t[\"id\"] for t in d]}')"
+echo "=== graph --from b --to c (path) ==="
+hippo graph --from b --to c | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print(f'path length: {len(d)}, ids: {[t[\"id\"] for t in d]}')"
 
-echo "=== graph --minimal (default - 4 fields) ==="
-hippo graph --minimal | python3 -c "import json,sys; d=json.load(sys.stdin); t=d['topics'][1]; print(f'fields: {list(t.keys())}')"
+echo "=== graph --minimal (default - 5 fields) ==="
+hippo graph --minimal | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); t=d['topics'][1]; print(f'fields: {list(t.keys())}')"
 
 echo "=== graph --full (standard fields) ==="
-hippo graph --full | python3 -c "import json,sys; d=json.load(sys.stdin); t=d['topics'][1]; print(f'fields: {list(t.keys())}')"
+hippo graph --full | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); t=d['topics'][1]; print(f'fields: {list(t.keys())}')"
 
 echo "=== graph --full+ (includes sources and word_count) ==="
-hippo graph --full+ | python3 -c "import json,sys; d=json.load(sys.stdin); t=d['topics'][1]; print(f'has sources: {\"sources\" in t}, has word_count: {\"word_count\" in t}')"
+hippo graph --full+ | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); t=d['topics'][1]; print(f'has sources: {\"sources\" in t}, has word_count: {\"word_count\" in t}')"
 
-echo "=== graph --full+ --pretty (full+ with formatting) ==="
-hippo graph --full+ --pretty | head -10
+echo "=== graph --full+ --block (full+ with block style) ==="
+hippo graph --full+ --block | head -10
 
 echo "=== graph --from b --depth 1 --full+ (traversal with fields) ==="
-hippo graph --from b --depth 1 --full+ | python3 -c "import json,sys; d=json.load(sys.stdin); t=d[0]; print(f'has sources: {\"sources\" in t}, has word_count: {\"word_count\" in t}')"
+hippo graph --from b --depth 1 --full+ | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); t=d[0]; print(f'has sources: {\"sources\" in t}, has word_count: {\"word_count\" in t}')"
 
-echo "=== graph --from b --to c --pretty (path with formatting) ==="
-hippo graph --from b --to c --pretty | head -5
+echo "=== graph --from b --to c --block (path with block style) ==="
+hippo graph --from b --to c --block | head -5
 
-echo "=== graph --from a --depth 1 --pretty (neighborhood with formatting) ==="
-hippo graph --from a --depth 1 --pretty | head -5
+echo "=== graph --from a --depth 1 --block (neighborhood with block style) ==="
+hippo graph --from a --depth 1 --block | head -5
 
 echo "=== graph --to c (error - requires --from) ==="
 hippo graph --to c 2>&1 || echo "Expected error when --to without --from"
@@ -184,7 +186,7 @@ BACKUP_CLUSTERS=$(ls .hippo/backups/clusters_backup_*.yaml | head -1)
 echo "Backup clusters: $BACKUP_CLUSTERS"
 
 echo "=== modify topics before restore ==="
-hippo topics --ids a,b,c --meta cluster=modified-cluster
+hippo topics --ids a,b,c --set cluster=modified-cluster
 
 echo "=== restore --version ==="
 hippo restore --version "$BACKUP_TS"
@@ -198,17 +200,17 @@ test -f .hippo/clusters.yaml && echo "clusters.yaml exists after restore"
 python3 -c "import yaml; d=yaml.safe_load(open('.hippo/clusters.yaml')); ids=[c['id'] for c in d['clusters']]; assert 'ml' in ids and 'nlp' in ids, f'Expected ml and nlp, got {ids}'; print('clusters.yaml contains ml and nlp')"
 
 echo "=== restore (most recent) ==="
-hippo topics --ids a --meta cluster=restored-cluster
+hippo topics --ids a --set cluster=restored-cluster
 hippo restore
 hippo topics --ids a | grep -q "cluster: ml" && echo "Restore successful: a cluster=ml"
 
-echo "=== topics --ids b --meta multiple targets, reset lists ==="
-hippo topics --ids b --meta aliases="[new-alias]" related="[]" sources="[]"
+echo "=== topics --ids b --set multiple targets, reset lists ==="
+hippo topics --ids b --set aliases="[new-alias]" related="[]" sources="[]"
 
 echo "=== verify updated b ==="
 hippo topics --ids b
 
-echo "=== topics --meta cluster customization survives sync ==="
+echo "=== topics --set cluster customization survives sync ==="
 echo "=== modify clusters.yaml manually ==="
 python3 -c "
 import yaml

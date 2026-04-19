@@ -14,13 +14,14 @@ hippo version                       # Show version
 hippo sync                         # Rebuild graph from files
 hippo topics                       # List topics with progress counts
 hippo topics --ids <ids>          # Get metadata (single or comma-separated)
-hippo topics --ids <ids> --meta field=value...   # Update metadata
-hippo topics --ids <ids> --meta ... --sync       # Update then sync
+hippo topics --ids <ids> --set field=value...   # Update metadata
+hippo topics --ids <ids> --set ... --sync       # Update then sync
 hippo graph                         # View full graph
-hippo graph --minimal               # id, cluster, parent, related
+hippo graph --minimal               # id, aliases, cluster, parent, related
 hippo graph --full                  # All standard fields
 hippo graph --full+                 # Full + sources, word_count
-hippo graph --pretty                # Pretty-print JSON
+hippo graph --flow                 # Flow style YAML (compact, default)
+hippo graph --block                # Block style YAML (multiline)
 hippo graph --from <id>           # View neighborhood
 hippo graph --from <id> --depth N # Traverse N levels
 hippo graph --from <id> --to <id2> # Find path
@@ -29,7 +30,7 @@ hippo graph --warnings              # Show warnings
 hippo sources                       # View source stats
 hippo sources --ingest chatgpt --paths <path...>  # Ingest ChatGPT exports
 hippo sources --ingest chatgpt --paths <path...> --from <dt> --till <dt> --titles <titles>  # Ingest with filters
-hippo sources --ingest x --ids <post_ids>          # Ingest X posts by ID (batch)
+hippo sources --ingest x --ids <post_ids>          # Ingest X posts by ID/URL/xurl (batch)
 hippo sources --ingest x --own                     # Ingest own posts (1 page, 10 posts)
 hippo sources --ingest x --own --count <N>         # Paginate (derived), fetch up to N posts
 hippo sources --ingest x --own --since-id <id> --until-id <id>  # Targeted range
@@ -49,11 +50,13 @@ All `--ingest x` commands pull full conversation above the target post, and mini
 
 ## Warnings
 
-Add `--warnings` to any command to show and troubleshoot issues:
+Add `--warnings` to show and troubleshoot issues:
 - `hippo sync --warnings`
 - `hippo topics --warnings`
 - `hippo sources --warnings`
 - `hippo graph --warnings`
+
+Backup/restore always show warning counts in summary.
 
 ## Topic Format
 
@@ -90,7 +93,6 @@ vault/
     ├── graph.yaml            # Derived graph (from topics)
     ├── graph.html            # Visualization
     ├── clusters.yaml         # Cluster colors and titles
-    ├── sources_archive.yaml  # Source references
     ├── backups/              # Rolling backups
     ├── diffs/                # Change logs
     └── logs/                 # Ingest logs

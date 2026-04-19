@@ -104,27 +104,6 @@ def get_frontmatter_order() -> list[str]:
     ]
 
 
-def frontmatter_to_yaml(data: dict) -> str:
-    lines = ["---"]
-    for key in get_frontmatter_order():
-        if key not in data:
-            continue
-        value = data[key]
-        if isinstance(value, list):
-            if value:
-                lines.append(f"{key}:")
-                for item in value:
-                    lines.append(f"  - {item}")
-            else:
-                lines.append(f"{key}: []")
-        elif value:
-            lines.append(f"{key}: {value}")
-        else:
-            lines.append(f"{key}:")
-    lines.append("---")
-    return "\n".join(lines)
-
-
 def topic_to_markdown(topic: Topic) -> str:
     lines = ["---"]
     for key in get_frontmatter_order():
@@ -179,10 +158,6 @@ def frontmatter_position(content: str) -> int | None:
     return match.start() if match else None
 
 
-def has_frontmatter(content: str) -> bool:
-    return bool(re.search(r"^---\s*\n", content))
-
-
 def body_has_content(body: str) -> bool:
     return bool(body.strip())
 
@@ -198,12 +173,6 @@ def load_topic(topic_id: str) -> Topic | None:
     if not path.exists():
         return None
     return topic_from_markdown(topic_id, path.read_text())
-
-
-def delete_topic_file(topic_id: str) -> None:
-    path = get_topic_path(topic_id)
-    if path.exists():
-        path.unlink()
 
 
 def update_frontmatter(topic_id: str, updates: dict[str, Any]) -> None:

@@ -2,7 +2,6 @@ import argparse
 
 from hippo.cli.ingest import cmd_ingest_chat, cmd_ingest_x
 from hippo.directories import VAULT_DIR
-from hippo.sources_archive import get_source_stats
 from hippo.topics.topic import get_frontmatter
 
 
@@ -14,27 +13,42 @@ def cmd_sources(args: argparse.Namespace) -> None:
         cmd_ingest_chat(args)
         return
 
-    stats = get_source_stats()
+    summary_data = _get_sources_summary()
     unused_sources = _find_unused_sources()
 
     parts = []
-    x_count = stats["by_type"].get("x", 0)
-    if x_count:
-        parts.append(f"{x_count} X conversations")
-    for type_name, count in stats["by_type"].items():
-        if type_name != "x":
-            parts.append(f"{count} {type_name}")
+    for dir_path, data in sorted(summary_data.items()):
+        count = data["total"]
+        parts.append(f"{dir_path}: {count}")
 
     warning_count = sum(len(v) for v in unused_sources.values())
-    summary = f"Total sources: {', '.join(parts)}, {stats['removed']} removed, {warning_count} warnings"
+    parts.append(f"warnings: {warning_count}")
+
+    summary = ", ".join(parts)
     if warning_count > 0 and not args.warnings:
         summary += " (see --warnings)"
     print(summary)
 
-    if args.warnings:
-        if unused_sources:
-            print()
-            _print_unused_sources(unused_sources)
+    if args.warnings and unused_sources:
+        print()
+        _print_unused_sources(unused_sources)
+
+
+def _get_sources_summary() -> dict[str, dict[str, int]]:
+    sources_dir = VAULT_DIR / "sources"
+    if not sources_dir.exists():
+        return {}
+
+    result: dict[str, dict[str, int]] = {}
+    for subdir in sources_dir.rglob("*"):
+        if subdir.is_file():
+            rel = subdir.relative_to(VAULT_DIR)
+            parent_dir = str(rel.parent)
+            if parent_dir not in result:
+                result[parent_dir] = {"total": 0}
+            result[parent_dir]["total"] += 1
+
+    return result
 
 
 def _print_unused_sources(unused_sources: dict[str, list[str]]) -> None:

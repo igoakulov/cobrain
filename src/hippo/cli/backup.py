@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from hippo.cli.utils import _count_connections, _print_errors, _print_warnings
+from hippo.cli.utils import _count_connections, _print_errors
 from hippo.backup import create_backup, list_backups, restore_backup, validate_backup
 from hippo.graph import sync as graph_sync
 
@@ -15,22 +15,10 @@ def cmd_backup(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     connection_count = _count_connections(result.topics)
-    warning_count = len(result.clean_issues)
-    if warning_count > 0:
-        summary = f"Sync complete: {len(result.topics)} topics, {connection_count} connections, {warning_count} warnings"
-        if not args.warnings:
-            summary += " (see --warnings)"
-        print(summary)
-        if args.warnings:
-            print()
-            _print_warnings(result.clean_issues)
-    else:
-        print(
-            f"Sync complete: {len(result.topics)} topics, {connection_count} connections"
-        )
+    print(f"Sync complete: {len(result.topics)} topics, {connection_count} connections")
 
     backup_path = create_backup(result)
-    print(f"\nBackup created: {backup_path.name}")
+    print(f"Backup created: {backup_path.name}")
 
 
 def cmd_restore(args: argparse.Namespace) -> None:

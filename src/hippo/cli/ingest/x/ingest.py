@@ -1,5 +1,3 @@
-import argparse
-import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -7,99 +5,36 @@ from datetime import datetime
 from hippo.parsers.x import (
     XPost,
     XTree,
-    get_x_client,
     get_existing_post_ids,
     get_x_trees_dir,
     load_all_cached_trees,
     save_tree,
-    batch_expand_and_merge_trees,
+    expand_and_merge_trees,
     arrange_into_tree,
     get_output_filename,
     sort_tree_by_time,
     _find_tree_containing,
-)
-from hippo.parsers.x.client import (
     POST_TYPE_IDS,
     POST_TYPE_OWN,
     POST_TYPE_LIKED,
     POST_TYPE_BOOKMARKED,
 )
 from hippo.directories import get_x_log_path, get_x_logs_dir
-from hippo.sources_archive import add_reference
 from hippo.yaml_utils import write_yaml
 
 X_ENDPOINTS = (POST_TYPE_OWN, POST_TYPE_LIKED, POST_TYPE_BOOKMARKED)
 
 
-def _validate_args(args: argparse.Namespace) -> None:
-    requires_own = ("since_id", "until_id")
-    mutually_exclusive = (
-        ("new", "count"),
-        ("new", "since_id"),
-        ("new", "until_id"),
-        ("count", "since_id"),
-        ("count", "until_id"),
-    )
-
-    for arg in requires_own:
-        if getattr(args, arg) and not args.own:
-            print(
-                f"Error: --{arg.replace('_', '-')} only works with --own",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-    for arg1, arg2 in mutually_exclusive:
-        if getattr(args, arg1) and getattr(args, arg2):
-            print(
-                f"Error: --{arg1.replace('_', '-')} and --{arg2.replace('_', '-')} are mutually exclusive",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-
-
-def cmd_ingest_x(args: argparse.Namespace) -> None:
-    _validate_args(args)
-
-    post_ids = _parse_post_args(args.ids)
-    endpoint = None
-    if args.own:
-        endpoint = POST_TYPE_OWN
-    elif args.likes:
-        endpoint = POST_TYPE_LIKED
-    elif args.bookmarks:
-        endpoint = POST_TYPE_BOOKMARKED
-
-    try:
-        client = get_x_client(authorization_code=args.authorization_code)
-    except RuntimeError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error: Failed to initialize X client: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    try:
-        _ingest_posts(client, args, post_ids, endpoint)
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def _ingest_posts(
-    client, args: argparse.Namespace, post_ids: list[str], endpoint: str | None
-) -> None:
+def _ingest_posts(client, args, post_ids: list[str], endpoint: str | None) -> None:
     trees_dir = get_x_trees_dir()
     logs_dir = get_x_logs_dir()
     trees_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Step 1: Load cached_trees
     cached_trees: dict[str, XTree] = {}
     for tree in load_all_cached_trees():
         cached_trees[tree.root.id] = tree
 
-    # Step 2 & 3: Fetch all target posts
     target_posts: list[XPost] = []
     target_ids_returned: list[str] = []
 
@@ -133,21 +68,14 @@ def _ingest_posts(
         count = args.count
         is_new = args.new if args.new else False
 
-        if endpoint == POST_TYPE_OWN:
-            posts = client.get_own_posts(
+        if endpoint:
+            posts = client.get_posts(
+                endpoint,
                 since_id=since_id,
                 until_id=until_id,
                 count=count,
                 existing_ids=existing_ids,
                 is_new=is_new,
-            )
-        elif endpoint == POST_TYPE_LIKED:
-            posts = client.get_liked_posts(
-                count=count, existing_ids=existing_ids, is_new=is_new
-            )
-        elif endpoint == POST_TYPE_BOOKMARKED:
-            posts = client.get_bookmarked_posts(
-                count=count, existing_ids=existing_ids, is_new=is_new
             )
         else:
             posts = []
@@ -168,22 +96,17 @@ def _ingest_posts(
 
     target_ids = [p.id for p in target_posts]
 
-    # Step 4: Create new_trees for ALL targets
     new_trees: dict[str, XTree] = {}
     for post in target_posts:
         tree = arrange_into_tree([post])
         tree.conversation_xurl = f"{post.author_username}/status/{post.id}"
         new_trees[tree.root.id] = tree
 
-    # Step 5: Run batch expand_and_merge_trees
     related_ids: list[str] = []
     updated_tree_ids: set[str] = set()
 
-    related_ids = batch_expand_and_merge_trees(
-        new_trees, cached_trees, updated_tree_ids
-    )
+    related_ids = expand_and_merge_trees(new_trees, cached_trees, updated_tree_ids)
 
-    # Step 6: Save unmerged trees
     created = []
     updated = []
     ingest_timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
@@ -193,7 +116,6 @@ def _ingest_posts(
         sort_tree_by_time(tree.root)
         filename = get_output_filename(tree)
         save_tree(tree)
-        add_reference("x", f"sources/x/{filename}", [])
         return filename
 
     all_trees_to_save = list(new_trees.values())
@@ -253,7 +175,7 @@ def _ingest_posts(
 
 
 def _build_log_data(
-    args: argparse.Namespace,
+    args,
     endpoint: str | None,
     target_ids_returned: list[str],
     related_ids_returned: list[str],
@@ -300,34 +222,3 @@ def _build_log_data(
         log_data["warnings"] = warnings
 
     return log_data
-
-
-def _parse_post_args(posts_arg: str | None) -> list[str]:
-    if not posts_arg:
-        return []
-
-    post_ids = []
-    for item in posts_arg.split(","):
-        item = item.strip()
-        if not item:
-            continue
-
-        post_id = _extract_post_id(item)
-        if post_id:
-            post_ids.append(post_id)
-
-    return post_ids
-
-
-def _extract_post_id(post_arg: str) -> str | None:
-    post_arg = post_arg.strip()
-
-    if post_arg.isdigit():
-        return post_arg
-
-    url_pattern = r"https?://x\.com/\w+/status/(\d+)"
-    match = re.search(url_pattern, post_arg)
-    if match:
-        return match.group(1)
-
-    return None

@@ -1,7 +1,7 @@
 .PHONY: test clean lint format
 
 test:
-	python -m unittest discover tests/
+	PYTHONPATH=src python -m unittest discover tests/
 	zsh tests/test_cli.sh
 
 clean:

@@ -1,9 +1,7 @@
 from hippo.topics.topic import (
     Topic,
     body_has_content,
-    delete_topic_file,
     frontmatter_position,
-    frontmatter_to_yaml,
     get_frontmatter,
     get_frontmatter_order,
     load_topic,
@@ -17,9 +15,7 @@ from hippo.topics.topic import (
 __all__ = [
     "Topic",
     "body_has_content",
-    "delete_topic_file",
     "frontmatter_position",
-    "frontmatter_to_yaml",
     "get_frontmatter",
     "get_frontmatter_order",
     "load_topic",

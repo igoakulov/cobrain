@@ -26,10 +26,6 @@ def get_topic_path(topic_id: str) -> Path:
     return _get_vault_dir() / "topics" / f"{topic_id}.md"
 
 
-def topic_file_exists(topic_id: str) -> bool:
-    return get_topic_path(topic_id).exists()
-
-
 def get_backups_dir() -> Path:
     return get_hippo_dir() / "backups"
 
@@ -44,10 +40,6 @@ def get_graph_path() -> Path:
 
 def get_clusters_path() -> Path:
     return get_hippo_dir() / "clusters.yaml"
-
-
-def get_sources_archive_path() -> Path:
-    return get_hippo_dir() / "sources_archive.yaml"
 
 
 def get_chats_dir() -> Path:

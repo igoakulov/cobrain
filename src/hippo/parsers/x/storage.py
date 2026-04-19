@@ -63,35 +63,6 @@ def get_existing_post_ids() -> set[str]:
     return post_ids
 
 
-def load_post_from_existing(post_id: str) -> dict | None:
-    trees_dir = get_x_trees_dir()
-    if not trees_dir.exists():
-        return None
-
-    for tree_file in trees_dir.glob("*.yaml"):
-        data = read_yaml(tree_file)
-        if not data:
-            continue
-
-        def _find_node(data: dict, target_id: str) -> dict | None:
-            if "xurl" in data:
-                parts = data["xurl"].split("/status/")
-                if len(parts) == 2 and parts[1] == target_id:
-                    return data
-            if "children" in data:
-                for child in data["children"]:
-                    result = _find_node(child, target_id)
-                    if result:
-                        return result
-            return None
-
-        post = _find_node(data, post_id)
-        if post:
-            return post
-
-    return None
-
-
 def get_output_filename(tree: XTree) -> str:
     if tree.conversation_xurl:
         parts = tree.conversation_xurl.split("/")

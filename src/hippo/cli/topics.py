@@ -18,8 +18,8 @@ def cmd_topics(args: argparse.Namespace) -> None:
             print("ERROR: No topic ids provided", file=sys.stderr)
             sys.exit(1)
 
-        if args.meta:
-            result = _set_metadata(topic_ids, args.meta)
+        if args.set:
+            result = _set_metadata(topic_ids, args.set)
             if result.errors:
                 print(f"Update failed: {len(result.errors)} errors\n")
                 _print_errors(result.errors)
@@ -59,10 +59,10 @@ def cmd_topics(args: argparse.Namespace) -> None:
         parts = []
         for prog in ["new", "started", "completed"]:
             if prog in progress_counts:
-                parts.append(f"{progress_counts[prog]} {prog}")
+                parts.append(f"{prog}: {progress_counts[prog]}")
 
         warning_count = len(result.clean_issues)
-        summary = f"Total topics: {', '.join(parts)}, {warning_count} warnings"
+        summary = f"{', '.join(parts)}, warnings: {warning_count}"
         if warning_count > 0 and not args.warnings:
             summary += " (see --warnings)"
         print(summary)

@@ -54,7 +54,7 @@ def main() -> None:
 
     topics_parser = subparsers.add_parser("topics", help="List or update topics")
     topics_parser.add_argument("--ids", help="Comma-separated topic IDs")
-    topics_parser.add_argument("--meta", nargs="+", help="field=value pairs to set")
+    topics_parser.add_argument("--set", nargs="+", help="field=value pairs to set")
     topics_parser.add_argument(
         "--sync", action="store_true", help="Sync graph after update"
     )
@@ -73,7 +73,7 @@ def main() -> None:
     field_group.add_argument(
         "--minimal",
         action="store_true",
-        help="Minimal fields: id, cluster, parent, related (default)",
+        help="Minimal fields: id, aliases, cluster, parent, related (default)",
     )
     field_group.add_argument(
         "--full", action="store_true", help="Full fields: all standard fields"
@@ -86,18 +86,17 @@ def main() -> None:
     )
     format_group = graph_parser.add_mutually_exclusive_group()
     format_group.add_argument(
-        "--compact",
+        "--flow",
         action="store_true",
         default=True,
-        help="Compact JSON output (default)",
+        help="Flow style YAML (compact, default)",
     )
     format_group.add_argument(
-        "--pretty", action="store_true", help="Pretty-print JSON output"
+        "--block", action="store_true", help="Block style YAML (multiline)"
     )
     graph_parser.set_defaults(func=cmd_graph)
 
     backup_parser = subparsers.add_parser("backup", help="Create rolling backup")
-    backup_parser.add_argument("--warnings", action="store_true", help="Show warnings")
     backup_parser.set_defaults(func=cmd_backup)
 
     restore_parser = subparsers.add_parser("restore", help="Restore from backup")
@@ -122,7 +121,7 @@ def main() -> None:
     )
     sources_parser.add_argument("--titles", help="Filter by titles (comma-separated)")
     sources_parser.add_argument(
-        "--ids", help="Comma-separated post IDs or URLs for X ingestion"
+        "--ids", help="Comma-separated post IDs, URLs, or xurls for X ingestion"
     )
     x_endpoint_group = sources_parser.add_mutually_exclusive_group()
     x_endpoint_group.add_argument(
@@ -144,12 +143,12 @@ def main() -> None:
     sources_parser.add_argument(
         "--since-id",
         dest="since_id",
-        help="X post ID to continue from (only with --own)",
+        help="Oldest post ID (excl.) to start from (only with --own)",
     )
     sources_parser.add_argument(
         "--until-id",
         dest="until_id",
-        help="X post ID as upper bound - returns posts older than this (only with --own)",
+        help="Newest post ID (excl.) to end before (only with --own)",
     )
     sources_parser.add_argument(
         "--count", type=int, help="Total posts to fetch (overrides default page size)"

@@ -82,10 +82,3 @@ def infer_clusters(topics: list[dict]) -> list[Cluster]:
         clusters.append(Cluster(id=cluster_id, title=title, color=color))
 
     return clusters
-
-
-def get_cluster_color(cluster_id: str, clusters: list[Cluster]) -> str | None:
-    for cluster in clusters:
-        if cluster.id == cluster_id:
-            return cluster.color
-    return None

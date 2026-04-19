@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-POST_TYPE_RELATED = "related"
+from hippo.parsers.x.helpers import POST_TYPE_RELATED
 
 
 @dataclass

@@ -185,10 +185,8 @@ def save_graph(result: BuildResult) -> dict:
         loaded = read_yaml(graph_path)
         old_graph = loaded if loaded else None
 
-    data = {
-        "topics": [t.to_dict() for t in result.topics],
-        "clusters": [c.to_dict() for c in result.clusters],
-    }
+    # graph.yaml: topics only (clusters in separate clusters.yaml)
+    data = {"topics": [t.to_dict() for t in result.topics]}
 
     diff = compute_diff(old_graph, data)
     if not diff.is_empty():

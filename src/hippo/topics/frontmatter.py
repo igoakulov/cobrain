@@ -1,6 +1,5 @@
 from hippo.topics.topic import (
     frontmatter_position,
-    frontmatter_to_yaml,
     get_frontmatter,
     get_frontmatter_order,
     parse_frontmatter,
@@ -8,7 +7,6 @@ from hippo.topics.topic import (
 
 __all__ = [
     "frontmatter_position",
-    "frontmatter_to_yaml",
     "get_frontmatter",
     "get_frontmatter_order",
     "parse_frontmatter",

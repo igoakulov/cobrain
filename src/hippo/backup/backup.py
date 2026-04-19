@@ -20,7 +20,7 @@ def list_backups() -> list[str]:
 
 def create_backup(result) -> Path:
     from hippo.graph.builder import save_graph
-    from hippo.graph.cluster import get_clusters_path
+    from hippo.directories import get_clusters_path
 
     word_counts = save_graph(result)
 
@@ -38,7 +38,6 @@ def create_backup(result) -> Path:
     backup_data = {
         "timestamp": timestamp,
         "topics": [t.to_dict() for t in result.topics],
-        "clusters": [c.to_dict() for c in result.clusters],
         "word_counts": word_counts,
     }
     write_yaml(backup_path, backup_data)

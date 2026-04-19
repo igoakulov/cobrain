@@ -1,14 +1,15 @@
 import argparse
-import json
 import sys
 from collections import deque
+
+import yaml
 
 from hippo.cli.utils import _count_connections, _print_errors, _print_warnings
 from hippo.directories import get_graph_path
 from hippo.graph import sync as graph_sync
 from hippo.yaml_utils import read_yaml
 
-MINIMAL_FIELDS = frozenset({"id", "cluster", "parent", "related"})
+MINIMAL_FIELDS = frozenset({"id", "aliases", "cluster", "parent", "related"})
 FULL_FIELDS = frozenset(
     {
         "id",
@@ -46,7 +47,7 @@ def _project_fields(topics: list[dict], fields: frozenset | None) -> list[dict]:
 
 
 def cmd_graph(args: argparse.Namespace) -> None:
-    json_indent = 2 if args.pretty else None
+    yaml_style = False if args.block else True  # True = flow, False = block
     show_sync_summary = False
 
     field_set = None
@@ -91,16 +92,15 @@ def cmd_graph(args: argparse.Namespace) -> None:
 
     if args.from_topic:
         _show_neighborhood(
-            args.from_topic, topics, args.depth, args.to_topic, json_indent, field_set
+            args.from_topic, topics, args.depth, args.to_topic, yaml_style, field_set
         )
     else:
         if show_sync_summary:
             print()
         output_data = {
             "topics": _project_fields(topics, field_set),
-            "clusters": data.get("clusters", []),
         }
-        print(json.dumps(output_data, indent=json_indent))
+        print(yaml.dump(output_data, default_flow_style=yaml_style, sort_keys=False))
 
 
 def _build_connection_map(topics: list[dict]) -> dict[str, list[tuple]]:
@@ -123,7 +123,7 @@ def _show_neighborhood(
     topics: list,
     depth: int,
     to_id: str | None,
-    json_indent: int | None = None,
+    yaml_style: bool = True,
     field_set: frozenset | None = None,
 ) -> None:
     topic_map = {t["id"]: t for t in topics}
@@ -132,6 +132,7 @@ def _show_neighborhood(
         print(f"ERROR: Topic not found: {from_id}", file=sys.stderr)
         sys.exit(1)
 
+    output_data = None
     if to_id:
         path = _find_path(from_id, to_id, topic_map)
         if path:
@@ -139,16 +140,16 @@ def _show_neighborhood(
             path_topics = _project_fields(
                 [topic_map[tid] for tid in reachable_ids if tid in set(path)], field_set
             )
-            print(json.dumps(path_topics, indent=json_indent))
+            output_data = path_topics
         else:
             print(f"ERROR: No path from {from_id} to {to_id}", file=sys.stderr)
             sys.exit(1)
     else:
         reachable = _get_reachable(from_id, topic_map, topics, depth)
         reachable_topics = [topic_map[tid] for tid in reachable if tid in topic_map]
-        print(
-            json.dumps(_project_fields(reachable_topics, field_set), indent=json_indent)
-        )
+        output_data = _project_fields(reachable_topics, field_set)
+
+    print(yaml.dump(output_data, default_flow_style=yaml_style, sort_keys=False))
 
 
 def _get_reachable(

@@ -94,10 +94,9 @@ Before write operations:
 
 ### CLI Command Structure
 
-**Topics:** `hippo topics [--ids <ids>] [--meta key=value...] [--sync] [--warnings]`
-- Summary: `Total topics: N new, M started, K completed, X warnings`
+**Topics:** `hippo topics [--ids <ids>] [--set key=value...] [--sync] [--warnings]`
 - With `--ids`: Get or set topic metadata
-- With `--meta`: Update metadata fields
+- With `--set`: Update metadata fields
 - With `--sync`: Sync graph after update
 - With `--warnings`: Show warning details
 
@@ -112,11 +111,12 @@ Before write operations:
 **Ingest:** `hippo sources --ingest chatgpt --paths <path>... [--from <datetime>] [--till <datetime>] [--titles <titles>]`
 - Ingest ChatGPT exports
 
-**Graph:** `hippo graph [--from <id>] [--to <id>] [--depth N] [--sync] [--warnings] [--pretty] [--minimal] [--full] [--full+]`
+**Graph:** `hippo graph [--from <id>] [--to <id>] [--depth N] [--sync] [--warnings] [--flow | --block] [--minimal | --full | --full+]`
 - With `--from`/`--to`: Path finding or neighborhood traversal
 - With `--sync`: Sync graph before viewing
-- With `--pretty`: Formatted JSON output
-- With `--minimal`: id, cluster, parent, related (default)
+- With `--flow`: Flow style YAML (compact, default)
+- With `--block`: Block style YAML (multiline)
+- With `--minimal`: id, aliases, cluster, parent, related (default)
 - With `--full`: All standard fields
 - With `--full+`: Full + sources, word_count
 
