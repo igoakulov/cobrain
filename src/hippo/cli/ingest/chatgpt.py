@@ -36,21 +36,23 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
     till_time = None
     titles = None
 
-    if args.from_datetime:
+    if args.since_datetime:
         try:
-            from_time = _parse_iso_datetime(args.from_datetime).timestamp()
+            from_time = _parse_iso_datetime(args.since_datetime).timestamp()
         except ValueError:
             print(
-                f"ERROR: Invalid --from datetime: {args.from_datetime}", file=sys.stderr
+                f"ERROR: Invalid --since datetime: {args.since_datetime}",
+                file=sys.stderr,
             )
             sys.exit(1)
 
-    if args.till_datetime:
+    if args.until_datetime:
         try:
-            till_time = _parse_iso_datetime(args.till_datetime).timestamp()
+            till_time = _parse_iso_datetime(args.until_datetime).timestamp()
         except ValueError:
             print(
-                f"ERROR: Invalid --till datetime: {args.till_datetime}", file=sys.stderr
+                f"ERROR: Invalid --until datetime: {args.until_datetime}",
+                file=sys.stderr,
             )
             sys.exit(1)
 
@@ -156,8 +158,8 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
                 "last_message_id": last_msg_id,
                 "ingested_at": ingest_timestamp,
                 "filters": {
-                    "from": args.from_datetime,
-                    "till": args.till_datetime,
+                    "since": args.since_datetime,
+                    "until": args.until_datetime,
                     "titles": args.titles,
                 },
             }

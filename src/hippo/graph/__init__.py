@@ -1,4 +1,5 @@
-from hippo.graph.builder import build_graph, save_graph, sync
+from hippo.graph.backup import create_backup
+from hippo.graph.builder import build_graph, read_graph, save_graph, sync
 from hippo.graph.cluster import (
     infer_clusters,
     load_clusters,
@@ -15,8 +16,10 @@ from hippo.graph.validation import (
 
 __all__ = [
     "build_graph",
+    "read_graph",
     "save_graph",
     "sync",
+    "create_backup",
     "infer_clusters",
     "load_clusters",
     "merge_clusters",

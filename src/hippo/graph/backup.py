@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from hippo.directories import get_backups_dir
-from hippo.yaml_utils import write_yaml
+from hippo.graph.diffs import compute_diff, save_diff
+from hippo.yaml_utils import read_yaml, write_yaml
 
 DEFAULT_RETENTION = 20
 
@@ -42,9 +43,33 @@ def create_backup(result) -> Path:
     }
     write_yaml(backup_path, backup_data)
 
+    _create_diff_from_previous(timestamp, result.topics)
+
     _prune_backups()
 
     return backup_path
+
+
+def _create_diff_from_previous(timestamp: str, current_topics: list) -> None:
+    backups = list_backups()
+    if not backups:
+        return
+
+    previous_ts = backups[0]
+    previous_backup_path = get_backups_dir() / f"graph_backup_{previous_ts}.yaml"
+
+    if not previous_backup_path.exists():
+        return
+
+    previous_data = read_yaml(previous_backup_path)
+    if not previous_data:
+        return
+
+    new_data = {"topics": [t.to_dict() for t in current_topics]}
+    diff = compute_diff(previous_data, new_data)
+
+    if not diff.is_empty():
+        save_diff(diff)
 
 
 def _prune_backups(retention: int = DEFAULT_RETENTION) -> None:

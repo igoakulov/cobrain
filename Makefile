@@ -1,8 +1,8 @@
 .PHONY: test clean lint format
 
 test:
-	PYTHONPATH=src python -m unittest discover tests/
-	zsh tests/test_cli.sh
+	@PYTHONPATH=src python -m unittest discover tests/
+	@zsh tests/test_cli.sh
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

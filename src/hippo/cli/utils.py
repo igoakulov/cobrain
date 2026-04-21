@@ -55,6 +55,22 @@ def _count_connections(topics: list) -> int:
     return count
 
 
+def print_sync_summary(result, show_warnings=False):
+    connection_count = _count_connections(result.topics)
+    warning_count = len(result.clean_issues)
+    summary = (
+        f"Sync complete: {len(result.topics)} topics, {connection_count} connections"
+    )
+    if warning_count > 0:
+        summary += f", {warning_count} warnings"
+        if not show_warnings:
+            summary += " (add --warnings to see)"
+    print(summary)
+    if show_warnings and result.clean_issues:
+        _print_warnings(result.clean_issues)
+        print()
+
+
 def _parse_iso_datetime(s: str) -> datetime:
     s = s.strip()
     for fmt in (

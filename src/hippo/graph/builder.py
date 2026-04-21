@@ -3,9 +3,9 @@ from pathlib import Path
 
 from hippo.directories import get_graph_path, VAULT_DIR
 from hippo.graph.cluster import infer_clusters, merge_clusters, save_clusters
-from hippo.graph.diffs import compute_diff, save_diff
 from hippo.graph.validation import BuildResult, CleanIssue, ValidationError
 from hippo.topics.topic import (
+    Topic,
     body_has_content,
     frontmatter_position,
     parse_frontmatter,
@@ -180,17 +180,7 @@ def save_graph(result: BuildResult) -> dict:
     graph_path = get_graph_path()
     graph_path.parent.mkdir(parents=True, exist_ok=True)
 
-    old_graph: dict | None = None
-    if graph_path.exists():
-        loaded = read_yaml(graph_path)
-        old_graph = loaded if loaded else None
-
-    # graph.yaml: topics only (clusters in separate clusters.yaml)
     data = {"topics": [t.to_dict() for t in result.topics]}
-
-    diff = compute_diff(old_graph, data)
-    if not diff.is_empty():
-        save_diff(diff)
 
     save_clusters(result.clusters)
     write_yaml(graph_path, data)
@@ -207,3 +197,19 @@ def sync() -> BuildResult:
     if not result.validation_errors:
         save_graph(result)
     return result
+
+
+def read_graph() -> BuildResult:
+    """Read graph.yaml, sync if missing."""
+    graph_path = get_graph_path()
+    if not graph_path.exists():
+        return sync()
+
+    data = read_yaml(graph_path)
+    if not data:
+        return sync()
+
+    topics = [Topic.from_dict(t) for t in data.get("topics", [])]
+    return BuildResult(
+        topics=topics, clusters=[], validation_errors=[], clean_issues=[]
+    )

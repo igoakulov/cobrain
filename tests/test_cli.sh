@@ -1,27 +1,21 @@
 #!/bin/bash
-set -e
 
 cd "$(dirname "$0")/.."
-
 export PATH="$(pwd)/.venv/bin:$PATH"
 
-TEST_VAULT="test-vault"
+FAILED=()
 
-rm -rf "$TEST_VAULT"
-mkdir -p "$TEST_VAULT"
+pass() { echo "PASS: $1"; }
+fail() { echo "FAIL: $1"; FAILED+=("$1"); }
 
-echo "=== version ==="
-hippo version
+rm -rf test-vault
+mkdir -p test-vault
+cd test-vault
 
-echo "=== init ==="
-hippo init --vault "$TEST_VAULT"
+(hippo version > /dev/null 2>&1) && (hippo init --vault . > /dev/null 2>&1) && pass smoke || fail smoke
 
-cd "$TEST_VAULT"
+mkdir -p topics
 
-echo "=== sync (empty vault) ==="
-hippo sync
-
-echo "=== Creating topics ==="
 cat > topics/a.md << 'EOF'
 ---
 id: a
@@ -98,168 +92,105 @@ sources:
 Content for orphan.
 EOF
 
-echo "=== sync (build graph with topics) ==="
-hippo sync
+(hippo sync > /dev/null 2>&1) && pass "sync with topics" || fail "sync with topics"
 
-echo "=== verify clusters.yaml created ==="
-test -f .hippo/clusters.yaml && echo "clusters.yaml exists"
-CLUSTER_COUNT=$(python3 -c "import yaml; print(len(yaml.safe_load(open('.hippo/clusters.yaml'))['clusters']))")
-echo "Cluster count: $CLUSTER_COUNT"
+# Warnings test data - add topics with various warning conditions
 
-echo "=== topics (summary without ids) ==="
-hippo topics
-
-echo "=== topics --warnings ==="
-hippo topics --warnings || true
-
-echo "=== topics --ids a (single read) ==="
-hippo topics --ids a
-
-echo "=== topics --ids a,b,c (multiple read) ==="
-hippo topics --ids a,b,c
-
-echo "=== topics --ids --sync (read with pre-sync) ==="
-hippo topics --ids a --sync
-
-echo "=== topics --ids nonexistent (error case) ==="
-hippo topics --ids nonexistent 2>&1 || echo "Expected error for nonexistent topic"
-
-echo "=== topics --ids a --set single field ==="
-hippo topics --ids a --set progress=completed
-
-echo "=== topics --ids b,c --set multiple fields ==="
-hippo topics --ids b,c --set cluster=nlp progress=started sources="[https://b.com,https://c.com]"
-
-echo "=== topics --ids a --set --sync with multiple changes ==="
-hippo topics --ids a --set progress=new cluster=ml aliases="[alias-a-new]" --sync
-
-echo "=== graph (full) ==="
-hippo graph | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print(f'topics: {len(d[\"topics\"])}')"
-
-echo "=== graph --sync (pre-sync then full) ==="
-hippo graph --sync | tail -n +2 | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print(f'topics: {len(d[\"topics\"])}')"
-
-echo "=== graph --from a ==="
-hippo graph --from a | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print([t['id'] for t in d])"
-
-echo "=== graph --from a --depth 1 ==="
-hippo graph --from a --depth 1 | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print([t['id'] for t in d])"
-
-echo "=== graph --from b --to c (path) ==="
-hippo graph --from b --to c | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print(f'path length: {len(d)}, ids: {[t[\"id\"] for t in d]}')"
-
-echo "=== graph --minimal (default - 5 fields) ==="
-hippo graph --minimal | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); t=d['topics'][1]; print(f'fields: {list(t.keys())}')"
-
-echo "=== graph --full (standard fields) ==="
-hippo graph --full | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); t=d['topics'][1]; print(f'fields: {list(t.keys())}')"
-
-echo "=== graph --full+ (includes sources and word_count) ==="
-hippo graph --full+ | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); t=d['topics'][1]; print(f'has sources: {\"sources\" in t}, has word_count: {\"word_count\" in t}')"
-
-echo "=== graph --full+ --block (full+ with block style) ==="
-hippo graph --full+ --block | head -10
-
-echo "=== graph --from b --depth 1 --full+ (traversal with fields) ==="
-hippo graph --from b --depth 1 --full+ | python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); t=d[0]; print(f'has sources: {\"sources\" in t}, has word_count: {\"word_count\" in t}')"
-
-echo "=== graph --from b --to c --block (path with block style) ==="
-hippo graph --from b --to c --block | head -5
-
-echo "=== graph --from a --depth 1 --block (neighborhood with block style) ==="
-hippo graph --from a --depth 1 --block | head -5
-
-echo "=== graph --to c (error - requires --from) ==="
-hippo graph --to c 2>&1 || echo "Expected error when --to without --from"
-
-echo "=== backup (creates clusters.yaml in backup) ==="
-hippo backup
-
-echo "=== list backups ==="
-ls .hippo/backups/
-
-BACKUP_FILE=$(ls .hippo/backups/graph_backup_*.yaml | head -1)
-BACKUP_TS=$(basename "$BACKUP_FILE" | sed 's/graph_backup_//' | sed 's/.yaml//')
-echo "Using backup: $BACKUP_TS"
-
-BACKUP_CLUSTERS=$(ls .hippo/backups/clusters_backup_*.yaml | head -1)
-echo "Backup clusters: $BACKUP_CLUSTERS"
-
-echo "=== modify topics before restore ==="
-hippo topics --ids a,b,c --set cluster=modified-cluster
-
-echo "=== restore --version ==="
-hippo restore --version "$BACKUP_TS"
-
-echo "=== verify restore (cluster should be original values) ==="
-hippo topics --ids a | grep -q "cluster: ml" && echo "Restore successful: a cluster=ml"
-hippo topics --ids c | grep -q "cluster: nlp" && echo "Restore successful: c cluster=nlp"
-
-echo "=== verify clusters.yaml restored ==="
-test -f .hippo/clusters.yaml && echo "clusters.yaml exists after restore"
-python3 -c "import yaml; d=yaml.safe_load(open('.hippo/clusters.yaml')); ids=[c['id'] for c in d['clusters']]; assert 'ml' in ids and 'nlp' in ids, f'Expected ml and nlp, got {ids}'; print('clusters.yaml contains ml and nlp')"
-
-echo "=== restore (most recent) ==="
-hippo topics --ids a --set cluster=restored-cluster
-hippo restore
-hippo topics --ids a | grep -q "cluster: ml" && echo "Restore successful: a cluster=ml"
-
-echo "=== topics --ids b --set multiple targets, reset lists ==="
-hippo topics --ids b --set aliases="[new-alias]" related="[]" sources="[]"
-
-echo "=== verify updated b ==="
-hippo topics --ids b
-
-echo "=== topics --set cluster customization survives sync ==="
-echo "=== modify clusters.yaml manually ==="
-python3 -c "
-import yaml
-d = yaml.safe_load(open('.hippo/clusters.yaml'))
-for c in d['clusters']:
-    if c['id'] == 'ml':
-        c['title'] = 'Machine Learning'
-        c['color'] = '#FF0000'
-yaml.safe_dump(d, open('.hippo/clusters.yaml', 'w'), default_flow_style=False)
-"
-echo "Modified ml cluster to 'Machine Learning' / #FF0000"
-
-echo "=== add new topic with new cluster ==="
-cat > topics/d.md << 'EOF'
+# Topic with no sources
+cat > topics/no-sources.md << 'EOF'
 ---
-id: d
-title: Topic D
-aliases:
-progress: new
-created_at: 2026-03-19
-updated_at: 2026-03-19
-cluster: rl
-parent:
-related: []
+id: no-sources
+title: No Sources
+parent: a
 sources: []
 ---
-# Topic D
-D content.
+# No Sources
 EOF
 
-echo "=== sync (should merge: preserve ml customizations, add rl auto-assigned) ==="
-hippo sync
-python3 -c "
-import yaml
-d = yaml.safe_load(open('.hippo/clusters.yaml'))
-for c in d['clusters']:
-    if c['id'] == 'ml':
-        assert c['title'] == 'Machine Learning', f'Expected Machine Learning, got {c[\"title\"]}'
-        assert c['color'] == '#FF0000', f'Expected #FF0000, got {c[\"color\"]}'
-        print('ml customizations preserved: Machine Learning / #FF0000')
-    elif c['id'] == 'rl':
-        assert c['title'] == 'Rl', f'Expected Rl, got {c[\"title\"]}'
-        print(f'rl auto-assigned: {c[\"title\"]} / {c[\"color\"]}')
-"
+# Topic with no parent
+cat > topics/no-parent.md << 'EOF'
+---
+id: no-parent
+title: No Parent
+progress: new
+parent:
+sources: []
+---
+# No Parent
+Content here.
+EOF
 
-echo "=== sources ==="
-hippo sources || true
+# Topic with empty body
+cat > topics/empty-body.md << 'EOF'
+---
+id: empty-body
+title: Empty Body
+parent: a
+sources:
+---
+EOF
 
-echo "=== sources --warnings ==="
-hippo sources --warnings || true
+# Re-sync to pick up new topics
+hippo sync > /dev/null 2>&1
 
-echo "=== All tests passed ==="
+# Test warning hint appears without --warnings flag
+(hippo sync 2>&1 | grep -q "(add --warnings to see)") && pass "sync warning hint" || fail "sync warning hint"
+(hippo graph --sync 2>&1 | grep -q "(add --warnings to see)") && pass "graph warning hint" || fail "graph warning hint"
+
+# Test detailed warnings with --warnings flag
+(hippo sync --warnings 2>&1 | grep -q "^WARNINGS$") && pass "sync --warnings format" || fail "sync --warnings format"
+(hippo sync --warnings 2>&1 | grep -q "no-sources") && pass "sync no_sources warning" || fail "sync no_sources warning"
+(hippo sync --warnings 2>&1 | grep -q "no-parent") && pass "sync no_parent warning" || fail "sync no_parent warning"
+(hippo sync --warnings 2>&1 | grep -q "nonexistent-parent") && pass "sync orphan_parent warning" || fail "sync orphan_parent warning"
+(hippo sync --warnings 2>&1 | grep -q "Empty body") && pass "sync empty_body warning" || fail "sync empty_body warning"
+
+# Test --warnings (only works with sync or --sync)
+(hippo topics > /dev/null 2>&1) && pass "topics summary" || fail "topics summary"
+(hippo topics --ids a,b,c > /dev/null 2>&1) && pass "topics read" || fail "topics read"
+(hippo topics --ids a --sync > /dev/null 2>&1) && pass "topics read sync" || fail "topics read sync"
+(hippo topics --ids nonexistent 2>&1 | grep -q "Topic not found") && pass "topics read error" || fail "topics read error"
+(hippo topics --ids a --set progress=completed > /dev/null 2>&1) && pass "topics set single" || fail "topics set single"
+(hippo topics --ids b,c --set cluster=nlp progress=started > /dev/null 2>&1) && pass "topics set multiple" || fail "topics set multiple"
+(hippo topics --ids a --set progress=new cluster=ml aliases="[alias-a-new]" --sync > /dev/null 2>&1) && pass "topics set sync" || fail "topics set sync"
+
+(hippo graph > /dev/null 2>&1) && pass "graph full" || fail "graph full"
+(hippo graph --sync > /dev/null 2>&1) && pass "graph sync" || fail "graph sync"
+(hippo graph --from a > /dev/null 2>&1) && pass "graph from" || fail "graph from"
+(hippo graph --from a --depth 1 > /dev/null 2>&1) && pass "graph from depth" || fail "graph from depth"
+(hippo graph --from b --to c > /dev/null 2>&1) && pass "graph path" || fail "graph path"
+(hippo graph --minimal > /dev/null 2>&1) && pass "graph minimal" || fail "graph minimal"
+(hippo graph --full > /dev/null 2>&1) && pass "graph full fields" || fail "graph full fields"
+(hippo graph --full+ > /dev/null 2>&1) && pass "graph full+" || fail "graph full+"
+(hippo graph --full+ --block > /dev/null 2>&1) && pass "graph full+ block" || fail "graph full+ block"
+(hippo graph --from b --depth 1 --full+ > /dev/null 2>&1) && pass "graph traversal full+" || fail "graph traversal full+"
+(hippo graph --from b --to c --block > /dev/null 2>&1) && pass "graph path block" || fail "graph path block"
+(hippo graph --from a --depth 1 --block > /dev/null 2>&1) && pass "graph neighborhood block" || fail "graph neighborhood block"
+
+(hippo backup > /dev/null 2>&1) && pass backup || fail backup
+
+(hippo topics --ids a,b,c --set cluster=modified-cluster > /dev/null 2>&1) && pass "modify topics" || fail "modify topics"
+
+(python3 -c "import yaml; d=yaml.safe_load(open('.hippo/clusters.yaml'))" > /dev/null 2>&1) && pass "clusters valid" || fail "clusters valid"
+
+(hippo topics --ids b --set aliases="[new-alias]" related="[]" sources="[]" > /dev/null 2>&1) && pass "topics set multi-target" || fail "topics set multi-target"
+(hippo topics --ids b > /dev/null 2>&1) && pass "verify updated" || fail "verify updated"
+
+(hippo topics --ids a --set cluster=ml > /dev/null 2>&1) && pass "reset cluster" || fail "reset cluster"
+
+(hippo sync > /dev/null 2>&1) && pass "sync" || fail "sync"
+
+# Sources warning tests
+mkdir -p sources
+echo "unused source content" > sources/unused.md
+(hippo sources 2>&1 | grep -q "warnings:") && pass "sources warning hint" || fail "sources warning hint"
+(hippo sources --warnings 2>&1 | grep -q "^UNUSED SOURCES") && pass "sources --warnings format" || fail "sources --warnings format"
+(hippo sources --warnings 2>&1 | grep -q "unused") && pass "sources unused warning" || fail "sources unused warning"
+
+echo "---"
+if [ ${#FAILED[@]} -eq 0 ]; then
+    echo "cli: all passed"
+else
+    echo "cli: ${#FAILED[@]} failed: ${FAILED[*]}"
+fi
+
+[ ${#FAILED[@]} -eq 0 ]

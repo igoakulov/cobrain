@@ -16,20 +16,21 @@ hippo topics                       # List topics with progress counts
 hippo topics --ids <ids>          # Get metadata (single or comma-separated)
 hippo topics --ids <ids> --set field=value...   # Update metadata
 hippo topics --ids <ids> --set ... --sync       # Update then sync
+hippo topics --sync --warnings               # Sync and show warnings
 hippo graph                         # View full graph
 hippo graph --minimal               # id, aliases, cluster, parent, related
-hippo graph --full                  # All standard fields
-hippo graph --full+                 # Full + sources, word_count
+hippo graph --full                  # minimal + title, progress, created_at, updated_at
+hippo graph --full+                 # full + sources, word_count
 hippo graph --flow                 # Flow style YAML (compact, default)
 hippo graph --block                # Block style YAML (multiline)
 hippo graph --from <id>           # View neighborhood
 hippo graph --from <id> --depth N # Traverse N levels
 hippo graph --from <id> --to <id2> # Find path
 hippo graph --sync                  # Sync before viewing
-hippo graph --warnings              # Show warnings
+hippo graph --sync --warnings       # Sync and show warnings
 hippo sources                       # View source stats
 hippo sources --ingest chatgpt --paths <path...>  # Ingest ChatGPT exports
-hippo sources --ingest chatgpt --paths <path...> --from <dt> --till <dt> --titles <titles>  # Ingest with filters
+hippo sources --ingest chatgpt --paths <path...> --since <dt> --until <dt> --titles <titles>  # Ingest with filters
 hippo sources --ingest x --ids <post_ids>          # Ingest X posts by ID/URL/xurl (batch)
 hippo sources --ingest x --own                     # Ingest own posts (1 page, 10 posts)
 hippo sources --ingest x --own --count <N>         # Paginate (derived), fetch up to N posts
@@ -41,9 +42,7 @@ hippo sources --ingest x --likes --new             # Catch-up: paginate (10/page
 hippo sources --ingest x --bookmarks               # Ingest bookmarked posts (1 page, 10 posts)
 hippo sources --ingest x --bookmarks --count <N>   # Paginate (derived), fetch up to N posts
 hippo sources --ingest x --bookmarks --new         # Catch-up: paginate (10/page), stop on cached
-hippo backup                        # Create backup
-hippo restore                       # Restore (most recent)
-hippo restore --version <timestamp> # Restore specific backup
+hippo backup                        # Create backup with diff from previous
 ```
 
 All `--ingest x` commands pull full conversation above the target post, and minimize API credits spent by always checking locally stored posts first.
@@ -52,11 +51,11 @@ All `--ingest x` commands pull full conversation above the target post, and mini
 
 Add `--warnings` to show and troubleshoot issues:
 - `hippo sync --warnings`
-- `hippo topics --warnings`
 - `hippo sources --warnings`
-- `hippo graph --warnings`
+- `hippo topics --sync --warnings`
+- `hippo graph --sync --warnings`
 
-Backup/restore always show warning counts in summary.
+Backup shows warning counts in summary.
 
 ## Topic Format
 

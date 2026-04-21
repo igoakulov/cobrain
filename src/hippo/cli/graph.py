@@ -4,10 +4,8 @@ from collections import deque
 
 import yaml
 
-from hippo.cli.utils import _count_connections, _print_errors, _print_warnings
-from hippo.directories import get_graph_path
-from hippo.graph import sync as graph_sync
-from hippo.yaml_utils import read_yaml
+from hippo.cli.utils import _print_errors, print_sync_summary
+from hippo.graph import read_graph, sync as graph_sync
 
 MINIMAL_FIELDS = frozenset({"id", "aliases", "cluster", "parent", "related"})
 FULL_FIELDS = frozenset(
@@ -66,41 +64,34 @@ def cmd_graph(args: argparse.Namespace) -> None:
             print(f"Sync failed: {len(result.validation_errors)} errors\n")
             _print_errors(result.validation_errors)
             sys.exit(1)
-        connection_count = _count_connections(result.topics)
-        warning_count = len(result.clean_issues)
-        summary = f"Sync complete: {len(result.topics)} topics, {connection_count} connections"
-        if warning_count > 0:
-            summary += f", {warning_count} warnings"
-            if not args.warnings:
-                summary += " (see --warnings)"
-        print(summary)
-        if args.warnings and result.clean_issues:
-            print()
-            _print_warnings(result.clean_issues)
+        print_sync_summary(result, show_warnings=args.warnings)
         show_sync_summary = True
-
-    graph_path = get_graph_path()
-    if not graph_path.exists():
-        print("ERROR: Graph not found. Run 'hippo sync' first.", file=sys.stderr)
-        sys.exit(1)
-
-    data = read_yaml(graph_path)
-    if not data:
-        print("ERROR: Graph file is corrupted.", file=sys.stderr)
-        sys.exit(1)
-    topics = data.get("topics", [])
+        topics = [t.to_dict() for t in result.topics]
+    else:
+        result = read_graph()
+        topics = [t.to_dict() for t in result.topics]
 
     if args.from_topic:
         _show_neighborhood(
             args.from_topic, topics, args.depth, args.to_topic, yaml_style, field_set
         )
+    elif args.to_topic:
+        _show_path_to(args.to_topic, topics, yaml_style, field_set)
     else:
-        if show_sync_summary:
+        if show_sync_summary and not args.warnings:
             print()
         output_data = {
             "topics": _project_fields(topics, field_set),
         }
         print(yaml.dump(output_data, default_flow_style=yaml_style, sort_keys=False))
+
+
+def cmd_backup(args: argparse.Namespace) -> None:
+    from hippo.graph import create_backup, read_graph
+
+    result = read_graph()
+    backup_path = create_backup(result)
+    print(f"Backup created: {backup_path.name}")
 
 
 def _build_connection_map(topics: list[dict]) -> dict[str, list[tuple]]:
@@ -136,9 +127,8 @@ def _show_neighborhood(
     if to_id:
         path = _find_path(from_id, to_id, topic_map)
         if path:
-            reachable_ids = list(topic_map.keys())
             path_topics = _project_fields(
-                [topic_map[tid] for tid in reachable_ids if tid in set(path)], field_set
+                [topic_map[tid] for tid in path if tid in topic_map], field_set
             )
             output_data = path_topics
         else:
@@ -150,6 +140,50 @@ def _show_neighborhood(
         output_data = _project_fields(reachable_topics, field_set)
 
     print(yaml.dump(output_data, default_flow_style=yaml_style, sort_keys=False))
+
+
+def _show_path_to(
+    to_id: str,
+    topics: list,
+    yaml_style: bool = True,
+    field_set: frozenset | None = None,
+) -> None:
+    topic_map = {t["id"]: t for t in topics}
+
+    if to_id not in topic_map:
+        print(f"ERROR: Topic not found: {to_id}", file=sys.stderr)
+        sys.exit(1)
+
+    path = _find_path_to_root(to_id, topic_map)
+    if path:
+        path_topics = _project_fields(
+            [topic_map[tid] for tid in path if tid in topic_map], field_set
+        )
+        output_data = path_topics
+    else:
+        print(f"ERROR: No path to root for: {to_id}", file=sys.stderr)
+        sys.exit(1)
+
+    print(yaml.dump(output_data, default_flow_style=yaml_style, sort_keys=False))
+
+
+def _find_path_to_root(to_id: str, topic_map: dict) -> list[str] | None:
+    if to_id not in topic_map:
+        return None
+
+    path = [to_id]
+    current = to_id
+
+    while True:
+        current_topic = topic_map.get(current, {})
+        parent = current_topic.get("parent")
+        if not parent:
+            break
+        path.append(parent)
+        current = parent
+
+    path.reverse()
+    return path
 
 
 def _get_reachable(

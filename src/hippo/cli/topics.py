@@ -3,11 +3,11 @@ import sys
 
 from hippo.cli.utils import (
     SetMetadataResult,
-    _count_connections,
     _print_errors,
-    _print_warnings,
+    print_sync_summary,
 )
-from hippo.graph import build_graph, sync as graph_sync, ValidationError
+from hippo.graph import read_graph, sync as graph_sync
+from hippo.graph.validation import ValidationError
 from hippo.topics import update_frontmatter, get_frontmatter
 
 
@@ -24,52 +24,32 @@ def cmd_topics(args: argparse.Namespace) -> None:
                 print(f"Update failed: {len(result.errors)} errors\n")
                 _print_errors(result.errors)
                 sys.exit(1)
-            if args.sync:
-                result = graph_sync()
-                if result.validation_errors:
-                    print(f"Update failed: {len(result.validation_errors)} errors\n")
-                    _print_errors(result.validation_errors)
-                    sys.exit(1)
-                connection_count = _count_connections(result.topics)
-                print(
-                    f"Sync complete: {len(result.topics)} topics, {connection_count} connections"
-                )
-        elif args.sync:
+
+        if args.sync:
             result = graph_sync()
             if result.validation_errors:
                 print(f"Sync failed: {len(result.validation_errors)} errors\n")
                 _print_errors(result.validation_errors)
                 sys.exit(1)
-            _get_metadata(topic_ids)
-        else:
-            _get_metadata(topic_ids)
-    else:
-        result = build_graph()
+            print_sync_summary(result, show_warnings=args.warnings)
+            _print_progress_summary(result.topics)
 
+        _get_metadata(topic_ids)
+    elif args.sync:
+        result = graph_sync()
         if result.validation_errors:
-            print(f"Validation failed: {len(result.validation_errors)} errors\n")
+            print(f"Sync failed: {len(result.validation_errors)} errors\n")
             _print_errors(result.validation_errors)
             sys.exit(1)
-
-        progress_counts: dict[str, int] = {}
-        for topic in result.topics:
-            prog = topic.progress or "new"
-            progress_counts[prog] = progress_counts.get(prog, 0) + 1
-
-        parts = []
-        for prog in ["new", "started", "completed"]:
-            if prog in progress_counts:
-                parts.append(f"{prog}: {progress_counts[prog]}")
-
-        warning_count = len(result.clean_issues)
-        summary = f"{', '.join(parts)}, warnings: {warning_count}"
-        if warning_count > 0 and not args.warnings:
-            summary += " (see --warnings)"
-        print(summary)
-
-        if args.warnings and result.clean_issues:
-            print()
-            _print_warnings(result.clean_issues)
+        print_sync_summary(result, show_warnings=args.warnings)
+        _print_progress_summary(result.topics)
+    else:
+        result = read_graph()
+        _print_progress_summary(result.topics)
+        if result.clean_issues:
+            warning_count = len(result.clean_issues)
+            hint = " (add --warnings to see)" if args.warnings else ""
+            print(f"warnings: {warning_count}{hint}")
 
 
 def _get_metadata(topic_ids: list[str]) -> None:
@@ -126,3 +106,17 @@ def _parse_value(value: str):
         items = value[1:-1].split(",")
         return [v.strip() for v in items if v.strip()]
     return value
+
+
+def _print_progress_summary(topics: list) -> None:
+    progress_counts: dict[str, int] = {}
+    for topic in topics:
+        prog = topic.progress or "new"
+        progress_counts[prog] = progress_counts.get(prog, 0) + 1
+
+    parts = []
+    for prog in ["new", "started", "completed"]:
+        if prog in progress_counts:
+            parts.append(f"{prog}: {progress_counts[prog]}")
+
+    print(", ".join(parts))

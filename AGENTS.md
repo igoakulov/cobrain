@@ -20,7 +20,7 @@ Topic markdown files are primary truth. graph.yaml is derived display cache.
 
 ### CLI-First for Token Efficiency
 
-Use CLI for: metadata updates (avoids full file reads), graph traversal, backup/restore.
+Use CLI for: metadata updates (avoids full file reads), graph traversal, backup.
 Use files for: creating topics, editing content, searching.
 
 ### argparse over Click
@@ -98,7 +98,7 @@ Before write operations:
 - With `--ids`: Get or set topic metadata
 - With `--set`: Update metadata fields
 - With `--sync`: Sync graph after update
-- With `--warnings`: Show warning details
+- With `--sync --warnings`: Show warning details
 
 **Sync:** `hippo sync [--warnings]`
 - Summary: `Sync complete: N topics, M connections, X warnings`
@@ -108,17 +108,18 @@ Before write operations:
 - Summary: `Total sources: N chats, M X conversations, K removed, X warnings`
 - With `--warnings`: Show UNUSED SOURCES
 
-**Ingest:** `hippo sources --ingest chatgpt --paths <path>... [--from <datetime>] [--till <datetime>] [--titles <titles>]`
+**Ingest:** `hippo sources --ingest chatgpt --paths <path>... [--since <datetime>] [--until <datetime>] [--titles <titles>]`
 - Ingest ChatGPT exports
 
 **Graph:** `hippo graph [--from <id>] [--to <id>] [--depth N] [--sync] [--warnings] [--flow | --block] [--minimal | --full | --full+]`
 - With `--from`/`--to`: Path finding or neighborhood traversal
 - With `--sync`: Sync graph before viewing
-- With `--flow`: Flow style YAML (compact, default)
-- With `--block`: Block style YAML (multiline)
+- With `--sync --warnings`: Show warning details
+- With `--flow`: Flow style (default, compact)
+- With `--block`: Block style (human-readable)
 - With `--minimal`: id, aliases, cluster, parent, related (default)
-- With `--full`: All standard fields
-- With `--full+`: Full + sources, word_count
+- With `--full`: minimal + title, progress, created_at, updated_at
+- With `--full+`: full + sources, word_count
 
 ### CLI Output Patterns
 
@@ -187,12 +188,3 @@ Adding a new dependency:
 # or
 source .venv/bin/activate && hippo sources --ingest x --own
 ```
-
----
-
-## Where to Find What
-
-- `docs/prd.md` - Full requirements
-- `docs/skill.md` - Agent workflow instructions
-- `docs/tasks.md` - Implementation progress and task list
-- `docs/roadmap.md` - Future enhancements and design decisions

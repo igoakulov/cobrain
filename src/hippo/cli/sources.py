@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 from hippo.cli.ingest import cmd_ingest_chat, cmd_ingest_x
 from hippo.directories import VAULT_DIR
@@ -7,6 +8,13 @@ from hippo.topics.topic import get_frontmatter
 
 def cmd_sources(args: argparse.Namespace) -> None:
     if args.ingest == "x":
+        endpoints = [args.ids, args.own, args.likes, args.bookmarks]
+        if sum(bool(e) for e in endpoints) > 1:
+            print(
+                "ERROR: --ids, --own, --likes, --bookmarks are mutually exclusive",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         cmd_ingest_x(args)
         return
     if args.ingest == "chatgpt":
@@ -26,11 +34,10 @@ def cmd_sources(args: argparse.Namespace) -> None:
 
     summary = ", ".join(parts)
     if warning_count > 0 and not args.warnings:
-        summary += " (see --warnings)"
+        summary += " (add --warnings to see)"
     print(summary)
 
     if args.warnings and unused_sources:
-        print()
         _print_unused_sources(unused_sources)
 
 
