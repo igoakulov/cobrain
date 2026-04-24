@@ -5,7 +5,7 @@ aliases: hippo,claude
 progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
-cluster:
+category:
 parent:
 related: []
 sources:
@@ -26,7 +26,7 @@ aliases: alias1,alias2
 progress: new|started|completed
 created_at: YYYY-MM-DD
 updated_at: YYYY-MM-DD
-cluster: cluster-id
+category: category-id
 parent: parent-topic-id
 related: [related1, related2]
 sources:

@@ -7,7 +7,7 @@ import yaml
 from hippo.cli.utils import _print_errors, print_sync_summary
 from hippo.graph import read_graph, sync as graph_sync
 
-MINIMAL_FIELDS = frozenset({"id", "aliases", "cluster", "parent", "related"})
+MINIMAL_FIELDS = frozenset({"id", "aliases", "category", "parent", "related"})
 FULL_FIELDS = frozenset(
     {
         "id",
@@ -16,7 +16,7 @@ FULL_FIELDS = frozenset(
         "progress",
         "created_at",
         "updated_at",
-        "cluster",
+        "category",
         "parent",
         "related",
     }
@@ -29,7 +29,7 @@ FULL_PLUS_FIELDS = frozenset(
         "progress",
         "created_at",
         "updated_at",
-        "cluster",
+        "category",
         "parent",
         "related",
         "sources",

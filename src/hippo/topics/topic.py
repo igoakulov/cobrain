@@ -16,7 +16,7 @@ class Topic:
     progress: str = "new"
     created_at: str = ""
     updated_at: str = ""
-    cluster: str = ""
+    category: str = ""
     parent: str = ""
     related: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
@@ -30,7 +30,7 @@ class Topic:
             "progress": self.progress,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-            "cluster": self.cluster,
+            "category": self.category,
             "parent": self.parent,
             "related": self.related,
             "sources": self.sources,
@@ -46,7 +46,7 @@ class Topic:
             progress=data.get("progress", "new"),
             created_at=data.get("created_at", ""),
             updated_at=data.get("updated_at", ""),
-            cluster=data.get("cluster", ""),
+            category=data.get("category", ""),
             parent=data.get("parent", ""),
             related=data.get("related", []),
             sources=data.get("sources", []),
@@ -97,7 +97,7 @@ def get_frontmatter_order() -> list[str]:
         "progress",
         "created_at",
         "updated_at",
-        "cluster",
+        "category",
         "parent",
         "related",
         "sources",
@@ -140,8 +140,8 @@ def topic_from_markdown(topic_id: str, content: str) -> Topic:
     if data.get("sources") is None:
         data["sources"] = []
 
-    if data.get("cluster") is None:
-        data["cluster"] = ""
+    if data.get("category") is None:
+        data["category"] = ""
     if data.get("parent") is None:
         data["parent"] = ""
 

@@ -90,7 +90,7 @@ def compute_diff(
             for key in (
                 "parent",
                 "related",
-                "cluster",
+                "category",
                 "sources",
                 "progress",
                 "aliases",

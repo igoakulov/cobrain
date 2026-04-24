@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from hippo.models import Topic, Cluster
+from hippo.models import Topic, Category
 
 VALID_PROGRESS_VALUES = {"new", "started", "completed"}
 
@@ -23,6 +23,6 @@ class CleanIssue:
 @dataclass
 class BuildResult:
     topics: list[Topic]
-    clusters: list[Cluster]
+    categories: list[Category]
     validation_errors: list[ValidationError]
     clean_issues: list[CleanIssue]

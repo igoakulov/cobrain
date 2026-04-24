@@ -77,15 +77,15 @@ class TestDiffs(unittest.TestCase):
             (
                 {
                     "topics": [
-                        {"id": "a", "title": "A", "cluster": "ml", "word_count": 0}
+                        {"id": "a", "title": "A", "category": "ml", "word_count": 0}
                     ]
                 },
                 {
                     "topics": [
-                        {"id": "a", "title": "A", "cluster": "nlp", "word_count": 0}
+                        {"id": "a", "title": "A", "category": "nlp", "word_count": 0}
                     ]
                 },
-                "cluster change",
+                "category change",
             ),
         ]
 
@@ -136,13 +136,13 @@ class TestDiffs(unittest.TestCase):
                     self.assertEqual(diff.topics_content_changed["a"]["delta"], "+20")
                 elif desc == "no change":
                     self.assertTrue(diff.is_empty())
-                elif desc == "cluster change":
+                elif desc == "category change":
                     self.assertIn("a", diff.topics_metadata_changed)
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["cluster"]["old"], "ml"
+                        diff.topics_metadata_changed["a"]["category"]["old"], "ml"
                     )
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["cluster"]["new"], "nlp"
+                        diff.topics_metadata_changed["a"]["category"]["new"], "nlp"
                     )
 
     def test_diff_dataclass(self):

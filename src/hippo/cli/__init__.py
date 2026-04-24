@@ -7,6 +7,7 @@ from hippo import __version__
 from hippo.config import init_vault
 
 from .graph import cmd_backup, cmd_graph
+from .show import cmd_show
 from .sources import cmd_sources
 from .sync import cmd_sync
 from .topics import cmd_topics
@@ -78,7 +79,7 @@ def main() -> None:
     fields_group.add_argument(
         "--minimal",
         action="store_true",
-        help="id, aliases, cluster, parent, related",
+        help="id, aliases, category, parent, related",
     )
     fields_group.add_argument(
         "--full",
@@ -104,6 +105,13 @@ def main() -> None:
     )
 
     graph_parser.set_defaults(func=cmd_graph)
+
+    show_parser = subparsers.add_parser("show", help="Open graph in browser")
+    show_parser.add_argument("--sync", action="store_true", help="Sync before viewing")
+    show_parser.add_argument(
+        "--warnings", action="store_true", help="Show warnings with --sync"
+    )
+    show_parser.set_defaults(func=cmd_show)
 
     backup_parser = subparsers.add_parser("backup", help="Create rolling backup")
     backup_parser.set_defaults(func=cmd_backup)

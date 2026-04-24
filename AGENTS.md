@@ -117,7 +117,7 @@ Before write operations:
 - With `--sync --warnings`: Show warning details
 - With `--flow`: Flow style (default, compact)
 - With `--block`: Block style (human-readable)
-- With `--minimal`: id, aliases, cluster, parent, related (default)
+- With `--minimal`: id, aliases, category, parent, related (default)
 - With `--full`: minimal + title, progress, created_at, updated_at
 - With `--full+`: full + sources, word_count
 

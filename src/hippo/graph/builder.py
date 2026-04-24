@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 from hippo.directories import get_graph_path, VAULT_DIR
-from hippo.graph.cluster import infer_clusters, merge_clusters, save_clusters
+from hippo.graph.category import infer_categories, merge_categories, save_categories
 from hippo.graph.validation import BuildResult, CleanIssue, ValidationError
 from hippo.topics.topic import (
     Topic,
@@ -165,12 +165,12 @@ def build_graph() -> BuildResult:
 
     topic_list = list(topics_dict.values())
     topic_dicts = [t.to_dict() for t in topic_list]
-    inferred = infer_clusters(topic_dicts)
-    cluster_dicts = merge_clusters(inferred)
+    inferred = infer_categories(topic_dicts)
+    category_dicts = merge_categories(inferred)
 
     return BuildResult(
         topics=topic_list,
-        clusters=cluster_dicts,
+        categories=category_dicts,
         validation_errors=validation_errors,
         clean_issues=clean_issues,
     )
@@ -182,7 +182,7 @@ def save_graph(result: BuildResult) -> dict:
 
     data = {"topics": [t.to_dict() for t in result.topics]}
 
-    save_clusters(result.clusters)
+    save_categories(result.categories)
     write_yaml(graph_path, data)
 
     word_counts = {}
@@ -211,5 +211,5 @@ def read_graph() -> BuildResult:
 
     topics = [Topic.from_dict(t) for t in data.get("topics", [])]
     return BuildResult(
-        topics=topics, clusters=[], validation_errors=[], clean_issues=[]
+        topics=topics, categories=[], validation_errors=[], clean_issues=[]
     )

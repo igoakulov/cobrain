@@ -18,7 +18,7 @@ hippo topics --ids <ids> --set field=value...   # Update metadata
 hippo topics --ids <ids> --set ... --sync       # Update then sync
 hippo topics --sync --warnings               # Sync and show warnings
 hippo graph                         # View full graph
-hippo graph --minimal               # id, aliases, cluster, parent, related
+hippo graph --minimal               # id, aliases, categories, parent, related
 hippo graph --full                  # minimal + title, progress, created_at, updated_at
 hippo graph --full+                 # full + sources, word_count
 hippo graph --flow                 # Flow style YAML (compact, default)
@@ -69,7 +69,7 @@ aliases: flash-attention
 progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
-cluster: transformers
+category: transformers
 parent: attention
 related: [ringattention]
 sources:
@@ -91,7 +91,7 @@ vault/
 └── .hippo/                   # App internals
     ├── graph.yaml            # Derived graph (from topics)
     ├── graph.html            # Visualization
-    ├── clusters.yaml         # Cluster colors and titles
+    ├── categories.yaml         # Category colors and titles
     ├── backups/              # Rolling backups
     ├── diffs/                # Change logs
     └── logs/                 # Ingest logs

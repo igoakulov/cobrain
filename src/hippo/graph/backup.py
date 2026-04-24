@@ -21,7 +21,7 @@ def list_backups() -> list[str]:
 
 def create_backup(result) -> Path:
     from hippo.graph.builder import save_graph
-    from hippo.directories import get_clusters_path
+    from hippo.directories import get_categories_path
 
     word_counts = save_graph(result)
 
@@ -31,10 +31,10 @@ def create_backup(result) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
     backup_path = backups_dir / f"graph_backup_{timestamp}.yaml"
 
-    clusters_path = get_clusters_path()
-    backup_clusters_path = backups_dir / f"clusters_backup_{timestamp}.yaml"
-    if clusters_path.exists():
-        backup_clusters_path.write_text(clusters_path.read_text())
+    categories_path = get_categories_path()
+    backup_categories_path = backups_dir / f"categories_backup_{timestamp}.yaml"
+    if categories_path.exists():
+        backup_categories_path.write_text(categories_path.read_text())
 
     backup_data = {
         "timestamp": timestamp,

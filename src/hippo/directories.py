@@ -38,8 +38,8 @@ def get_graph_path() -> Path:
     return get_hippo_dir() / "graph.yaml"
 
 
-def get_clusters_path() -> Path:
-    return get_hippo_dir() / "clusters.yaml"
+def get_categories_path() -> Path:
+    return get_hippo_dir() / "categories.yaml"
 
 
 def get_chats_dir() -> Path:

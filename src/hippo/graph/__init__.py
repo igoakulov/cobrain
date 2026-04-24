@@ -1,10 +1,10 @@
 from hippo.graph.backup import create_backup
 from hippo.graph.builder import build_graph, read_graph, save_graph, sync
-from hippo.graph.cluster import (
-    infer_clusters,
-    load_clusters,
-    merge_clusters,
-    save_clusters,
+from hippo.graph.category import (
+    infer_categories,
+    load_categories,
+    merge_categories,
+    save_categories,
 )
 from hippo.graph.diffs import Diff, compute_diff, load_diffs, save_diff
 from hippo.graph.validation import (
@@ -20,10 +20,10 @@ __all__ = [
     "save_graph",
     "sync",
     "create_backup",
-    "infer_clusters",
-    "load_clusters",
-    "merge_clusters",
-    "save_clusters",
+    "infer_categories",
+    "load_categories",
+    "merge_categories",
+    "save_categories",
     "Diff",
     "compute_diff",
     "load_diffs",

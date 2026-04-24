@@ -24,7 +24,7 @@ aliases: alias-a,topic-a
 progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
-cluster: ml
+category: ml
 parent:
 related: []
 sources:
@@ -43,7 +43,7 @@ aliases: alias-b
 progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
-cluster: ml
+category: ml
 parent: a
 related:
   - c
@@ -63,7 +63,7 @@ aliases:
 progress: started
 created_at: 2026-03-19
 updated_at: 2026-03-19
-cluster: nlp
+category: nlp
 parent: a
 related: []
 sources:
@@ -81,7 +81,7 @@ aliases:
 progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
-cluster: ml
+category: ml
 parent: nonexistent-parent
 related: []
 sources:
@@ -150,8 +150,8 @@ hippo sync > /dev/null 2>&1
 (hippo topics --ids a --sync > /dev/null 2>&1) && pass "topics read sync" || fail "topics read sync"
 (hippo topics --ids nonexistent 2>&1 | grep -q "Topic not found") && pass "topics read error" || fail "topics read error"
 (hippo topics --ids a --set progress=completed > /dev/null 2>&1) && pass "topics set single" || fail "topics set single"
-(hippo topics --ids b,c --set cluster=nlp progress=started > /dev/null 2>&1) && pass "topics set multiple" || fail "topics set multiple"
-(hippo topics --ids a --set progress=new cluster=ml aliases="[alias-a-new]" --sync > /dev/null 2>&1) && pass "topics set sync" || fail "topics set sync"
+(hippo topics --ids b,c --set category=nlp progress=started > /dev/null 2>&1) && pass "topics set multiple" || fail "topics set multiple"
+(hippo topics --ids a --set progress=new category=ml aliases="[alias-a-new]" --sync > /dev/null 2>&1) && pass "topics set sync" || fail "topics set sync"
 
 (hippo graph > /dev/null 2>&1) && pass "graph full" || fail "graph full"
 (hippo graph --sync > /dev/null 2>&1) && pass "graph sync" || fail "graph sync"
@@ -168,14 +168,14 @@ hippo sync > /dev/null 2>&1
 
 (hippo backup > /dev/null 2>&1) && pass backup || fail backup
 
-(hippo topics --ids a,b,c --set cluster=modified-cluster > /dev/null 2>&1) && pass "modify topics" || fail "modify topics"
+(hippo topics --ids a,b,c --set category=modified-category > /dev/null 2>&1) && pass "modify topics" || fail "modify topics"
 
-(python3 -c "import yaml; d=yaml.safe_load(open('.hippo/clusters.yaml'))" > /dev/null 2>&1) && pass "clusters valid" || fail "clusters valid"
+(python3 -c "import yaml; d=yaml.safe_load(open('.hippo/categories.yaml'))" > /dev/null 2>&1) && pass "categories valid" || fail "categories valid"
 
 (hippo topics --ids b --set aliases="[new-alias]" related="[]" sources="[]" > /dev/null 2>&1) && pass "topics set multi-target" || fail "topics set multi-target"
 (hippo topics --ids b > /dev/null 2>&1) && pass "verify updated" || fail "verify updated"
 
-(hippo topics --ids a --set cluster=ml > /dev/null 2>&1) && pass "reset cluster" || fail "reset cluster"
+(hippo topics --ids a --set category=ml > /dev/null 2>&1) && pass "reset category" || fail "reset category"
 
 (hippo sync > /dev/null 2>&1) && pass "sync" || fail "sync"
 

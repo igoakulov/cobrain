@@ -4,7 +4,7 @@ from hippo.topics.topic import Topic
 
 
 @dataclass
-class Cluster:
+class Category:
     id: str
     title: str
     color: str = "#888888"
@@ -17,8 +17,8 @@ class Cluster:
         }
 
     @staticmethod
-    def from_dict(data: dict) -> "Cluster":
-        return Cluster(
+    def from_dict(data: dict) -> "Category":
+        return Category(
             id=data["id"],
             title=data["title"],
             color=data.get("color", "#888888"),
@@ -28,17 +28,17 @@ class Cluster:
 @dataclass
 class Graph:
     topics: list[Topic] = field(default_factory=list)
-    clusters: list[Cluster] = field(default_factory=list)
+    categories: list[Category] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
-            "clusters": [c.to_dict() for c in self.clusters],
+            "categories": [c.to_dict() for c in self.categories],
             "topics": [n.to_dict() for n in self.topics],
         }
 
     @staticmethod
     def from_dict(data: dict) -> "Graph":
         return Graph(
-            clusters=[Cluster.from_dict(c) for c in data.get("clusters", [])],
+            categories=[Category.from_dict(c) for c in data.get("categories", [])],
             topics=[Topic.from_dict(n) for n in data.get("topics", [])],
         )

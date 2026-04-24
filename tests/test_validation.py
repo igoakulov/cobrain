@@ -123,7 +123,7 @@ class TestValidation(unittest.TestCase):
         self.assertIsInstance(result.validation_errors, list)
         self.assertIsInstance(result.clean_issues, list)
         self.assertTrue(hasattr(result, "topics"))
-        self.assertTrue(hasattr(result, "clusters"))
+        self.assertTrue(hasattr(result, "categories"))
 
 
 if __name__ == "__main__":
