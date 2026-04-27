@@ -90,7 +90,6 @@ def build_html() -> Path:
                 related_links.append({"source": topic.id, "target": related_id})
 
     topic_count = len(topics)
-    connection_count = len(parent_links) + len(related_links)
 
     output = {
         "nodes": list(topic_map.values()),
@@ -99,7 +98,6 @@ def build_html() -> Path:
         "categories": list(categories.values()),
         "vaultName": vault_name,
         "topicCount": topic_count,
-        "connectionCount": connection_count,
         "vaultPath": str(hippo_dir.parent),
     }
 

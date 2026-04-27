@@ -75,6 +75,64 @@ var svg = d3
     }
   });
 
+var searchTimeout = null;
+
+function searchNodes(query) {
+  query = query.toLowerCase().trim();
+  if (query.length < 2) {
+    node.style("opacity", 1);
+    linkParent.style("opacity", 1);
+    linkRelated.style("opacity", 1);
+    return;
+  }
+  var useOr = query.indexOf("|") >= 0;
+  var useOrWords = !useOr && query.indexOf(" or ") >= 0;
+  var terms = (
+    useOr ? query.split("|") : query.split(useOrWords ? " or " : " ")
+  )
+    .map(function (t) {
+      return t.trim().toLowerCase();
+    })
+    .filter(function (t) {
+      return t.length > 0;
+    });
+  var matchedIds = {};
+  node.style("opacity", function (d) {
+    var match = matchesNode(d, terms, useOr || useOrWords);
+    if (match) {
+      matchedIds[d.id] = true;
+    }
+    return match ? 1 : 0.1;
+  });
+  linkParent.style("opacity", function (d) {
+    return matchedIds[d.source.id] && matchedIds[d.target.id] ? 1 : 0.1;
+  });
+  linkRelated.style("opacity", function (d) {
+    return matchedIds[d.source.id] && matchedIds[d.target.id] ? 1 : 0.1;
+  });
+}
+
+function matchesNode(d, terms, useOr) {
+  var fields = [d.id, d.title, d.category]
+    .concat(d.aliases || [])
+    .concat(d.sources || []);
+  var searchStr = fields.join(" ").toLowerCase();
+  if (useOr) {
+    for (var i = 0; i < terms.length; i++) {
+      if (searchStr.indexOf(terms[i]) >= 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+  for (var i = 0; i < terms.length; i++) {
+    if (searchStr.indexOf(terms[i]) < 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 var zoom = d3
   .zoom()
   .scaleExtent([0.1, 3])
@@ -138,7 +196,6 @@ node
   .attr("dx", 14)
   .attr("dy", 4)
   .attr("font-size", "10px")
-  .attr("font-weight", "200")
   .attr("fill", "#666")
   .text(function (d) {
     return d.id;
@@ -146,13 +203,6 @@ node
 
 var tooltip = d3.select("#tooltip");
 var tooltipTimer = null;
-d3.select("#vault-name").text(data.vaultName || "Hippo");
-d3.select("#vault-stats").text(
-  (data.topicCount || 0) +
-    " topics, " +
-    (data.connectionCount || 0) +
-    " connections",
-);
 
 function getNodeClass(d) {
   var cls = "node-circle";
@@ -246,15 +296,15 @@ function updateButtons() {
     openBtn.attr("data-id", selectedId);
     openBtn
       .classed("hidden", false)
-      .text("Open " + selectedId + ".md (" + openHint + ")");
+      .html("Open " + selectedId + ".md \u00B7 " + openHint);
     copyBtn
       .classed("hidden", false)
-      .html("Copy " + count + " selected (" + copyHint + ")");
+      .html("Copy " + count + " selected \u00B7 " + copyHint);
   } else if (count > 1) {
     openBtn.classed("hidden", true);
     copyBtn
       .classed("hidden", false)
-      .html("Copy " + count + " selected (" + copyHint + ")");
+      .html("Copy " + count + " selected \u00B7 " + copyHint);
   } else {
     openBtn.classed("hidden", true);
     copyBtn.classed("hidden", true);
@@ -344,8 +394,24 @@ simulation.on("tick", function () {
 
 var copyBtn = d3.select("#copy-btn");
 var openBtn = d3.select("#open-btn");
+var searchInput = d3.select("#search");
 var copyHint = isMac ? "⌘C" : "Ctrl+C";
-var openHint = "Enter";
+var openHint = "↵";
+
+searchInput.attr(
+  "placeholder",
+  "Search " +
+    data.topicCount +
+    " topics by title, category, sources...   " +
+    (isMac ? "⌘K" : "Ctrl+K"),
+);
+
+searchInput.on("input", function () {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(function () {
+    searchNodes(searchInput.property("value"));
+  }, 200);
+});
 
 updateButtons();
 
@@ -355,14 +421,15 @@ window.addEventListener("keydown", function (event) {
     return;
   }
   if (event.code === "Escape") {
-    selectedIds = {};
-    node
-      .selectAll("circle")
-      .attr("class", function (d) {
-        return getNodeClass(d);
-      })
-      .style("stroke", "none");
-    updateButtons();
+    searchInput.property("value", "").node().blur();
+    node.style("opacity", 1);
+    linkParent.style("opacity", 1);
+    linkRelated.style("opacity", 1);
+    return;
+  }
+  if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+    event.preventDefault();
+    searchInput.node().focus();
     return;
   }
   var count = Object.keys(selectedIds).length;
