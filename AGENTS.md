@@ -1,6 +1,6 @@
-# AGENTS.md - Hippo Development Guide
+# AGENTS.md - CoBrain Development Guide
 
-This file provides guidelines for agentic coding agents working on Hippo.
+This file provides guidelines for agentic coding agents working on CoBrain.
 
 ---
 
@@ -35,14 +35,63 @@ Single `parent` field. Multiple parent needs → create intermediate topic.
 
 ## Code Style
 
+### Naming
 - snake_case for functions/methods
-- PascalCase for classes
+- PascalCase for classes and exceptions
+- ALL_CAPS for constants
+- Prefixes for private members: `_internal_state`
+- Common prefixes: `add_`, `build_`, `get_`, `set_`, `is_`, `has_`, `can_`, `validate_`
+
+### Types
 - Built-in generics: `list[str]`, `dict[str, str]`, `str | None`
 - Use built-in union syntax (`|`) over `typing.Union` or `typing.Optional`
 - Use built-in generics over `typing.Dict`, `typing.List`, etc.
 - `typing.Any` is acceptable for genuinely untyped values (e.g., arbitrary YAML data); prefer `object` as a supertype where applicable
-- Early returns as guards
 - Annotate public functions with return types
+
+### Imports
+- Sort alphabetically within groups (stdlib, third-party, local)
+- Avoid importing inside functions unless required by order or deferred heavy deps
+- Use `from cobrain.module import something` for local imports
+
+### Formatting
+- Use ruff for formatting (`make format`)
+- One class per file; one primary function per file
+- Early returns as guards to avoid deep nesting
+- Keep functions focused; extract helpers for repeated logic
+- No comments unless explicitly requested
+
+### Control Flow
+- Early returns as guards
+- Minimize nesting via small helpers
+- Keep try/except narrow around risky statements
+
+### Class Structure
+```python
+class ClassName:
+    SOME_CONSTANT = "value"
+
+    @staticmethod
+    def build_default(...):
+        ...
+
+    @property
+    def some_property(self) -> ...:
+        ...
+
+    def __init__(self, ...):
+        ...
+
+    def do_something(self, ...) -> ...:
+        ...
+
+    def close(self) -> None:
+        ...
+```
+
+### Decorators and Registration
+- Use decorators to register plugins/providers in a central registry
+- Registration decorators should be idempotent and safe on repeated imports
 
 ---
 
@@ -51,6 +100,9 @@ Single `parent` field. Multiple parent needs → create intermediate topic.
 - Library layer: raise specific exceptions, add context when re-raising
 - CLI layer: let exceptions bubble, print to stderr with non-zero exit
 - Avoid broad `except Exception:`
+- Use ValueError for invalid options/values (e.g., unknown output format)
+- Use RuntimeError for operational conditions (e.g., missing optional dependencies)
+- Centralize user-facing error mapping at CLI boundary
 
 ---
 
@@ -63,11 +115,41 @@ Before write operations:
 
 ---
 
+## Commands
+
+### Running Tests
+
+```bash
+make test              # Run all tests (unit + integration)
+make lint              # Run ruff linter
+make format            # Run ruff formatter
+make clean             # Clean cache files
+```
+
+**Single test:** Use Python's unittest with the pattern flag:
+```bash
+python -m unittest tests.test_validation.TestValidation.test_validation_cases -v
+python -m unittest tests.test_chatgpt -v  # Run all tests in a file
+```
+
+### Running CLI
+
+```bash
+.venv/bin/cobrain <command> [options]
+# or
+source .venv/bin/activate && cobrain <command> [options]
+```
+
+### Type Checking
+
+```bash
+uv run pyright src/ tests/
+```
+
+---
+
 ## Testing
 
-- `make test` runs all tests (unit tests + integration tests)
-- Unit tests: `python -m unittest discover tests/`
-- Integration tests: `zsh tests/test_cli.sh`
 - Mock filesystem operations
 - One assertion per test
 - Descriptive names: `test_meta_get_returns_frontmatter`
@@ -75,6 +157,11 @@ Before write operations:
 ---
 
 ## Important Patterns
+
+### Runtime and Environment
+- Set environment defaults via `os.environ.setdefault` to avoid overriding user settings
+- Suppress noisy third-party logs unless errors occur
+- Defer heavy or optional imports to call sites or helper methods to keep startup fast
 
 ### YAML Frontmatter
 - Block between `---` delimiters
@@ -92,99 +179,36 @@ Before write operations:
 - Scope: frontmatter only, not prose content
 - Configurable retention (default 20)
 
-### CLI Command Structure
+### CLI Commands
 
-**Topics:** `hippo topics [--ids <ids>] [--set key=value...] [--sync] [--warnings]`
-- With `--ids`: Get or set topic metadata
-- With `--set`: Update metadata fields
-- With `--sync`: Sync graph after update
-- With `--sync --warnings`: Show warning details
+- **sync:** `cobrain sync [--warnings]`
+- **vault:** `cobrain vault [--ids <ids>] [--set key=value...]`
+- **sources:** `cobrain sources [--warnings]`
+- **show:** `cobrain show`
+- **backup:** `cobrain backup`
 
-**Sync:** `hippo sync [--warnings]`
-- Summary: `Sync complete: N topics, M connections, X warnings`
-- With `--warnings`: Show warning details
-
-**Sources:** `hippo sources [--warnings]`
-- Summary: `Total sources: N chats, M X conversations, K removed, X warnings`
-- With `--warnings`: Show UNUSED SOURCES
-
-**Ingest:** `hippo sources --ingest chatgpt --paths <path>... [--since <datetime>] [--until <datetime>] [--titles <titles>]`
-- Ingest ChatGPT exports
-
-**Graph:** `hippo graph [--from <id>] [--to <id>] [--depth N] [--sync] [--warnings] [--flow | --block] [--minimal | --full | --full+]`
-- With `--from`/`--to`: Path finding or neighborhood traversal
-- With `--sync`: Sync graph before viewing
-- With `--sync --warnings`: Show warning details
-- With `--flow`: Flow style (default, compact)
-- With `--block`: Block style (human-readable)
-- With `--minimal`: id, aliases, category, parent, related (default)
-- With `--full`: minimal + title, progress, created_at, updated_at
-- With `--full+`: full + sources, word_count
+**Sync triggers:** `cobrain sync`, `cobrain vault --set ...` (auto-syncs after update)
 
 ### CLI Output Patterns
 
-**Token efficiency:** Avoid repetition. Use lists/headers over repeated lines.
+- **Token efficiency:** Avoid repetition. Use lists/headers over repeated lines.
+- **Section separation:** Blank line between distinct sections (summary + details).
+- **Section headings:** Use caps `ERRORS:` / `WARNINGS:` as headers only.
+- **Filepath placement:** For created files, filepath comes last.
 
-**Section separation:** Blank line between distinct sections (summary + details).
+**Error messages:** `Missing topic id`, `Duplicate topic id: {id}`, `Frontmatter not at top`, `Empty body`, `No sources`, `No parent`, `Parent not found: {parent}`
 
-**Section headings:** Use caps `ERRORS:` / `WARNINGS:` as headers only. Prepend to single cases when context is ambiguous.
-
-**Sequential summaries:** Multiple summaries count as one section (no blank line between).
-
-**Filepath placement:** For created files, filepath comes last (after summaries/errors/warnings).
-
-**Error messages:**
-- `Missing topic id`
-- `Duplicate topic id: {id}`
-- `Frontmatter not at top`
-- `Empty body`
-- `No sources`
-- `No parent`
-- `Unknown progress: {value}`
-- `Frontmatter parsed with issues`
-- `Parent not found: {parent}`
-
-**Grouped list pattern (errors/warnings):**
-```
-ERRORS
-topic-id (filename):
-- error message
-- error message
-
-topic-id (filename):
-- error message
-```
-
-**Metadata output pattern:**
-```
-filename.md
-field: value
-field: value
-
-filename.md
-field: value
-...
-```
+### UX Messaging
+- Centralize user-visible strings in a dedicated module to unify tone and wording
+- Keep constants in ALL_CAPS and grouped by domain (headers, messages, links)
 
 ---
 
 ## Package Management
 
-**Always use `.venv` for this project.** Activate it before running commands:
-```bash
-source .venv/bin/activate
-```
-
-**Use `uv sync` to install/update dependencies.** Never use `pip install` directly.
+**Use `.venv` and `uv sync`** to manage dependencies. Never use `pip install` directly.
 
 Adding a new dependency:
 1. Add to `pyproject.toml` dependencies
 2. Run `uv sync` to install
 3. Verify with `uv pip list`
-
-**Running commands:** Use `.venv/bin/hippo` or activate the venv first:
-```bash
-.venv/bin/hippo sources --ingest x --own
-# or
-source .venv/bin/activate && hippo sources --ingest x --own
-```

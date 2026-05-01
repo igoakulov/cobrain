@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 
 class TestPostIdExtraction(unittest.TestCase):
     def setUp(self):
-        from hippo.cli.ingest.x.parse import _parse_post_args
+        from cobrain.cli.ingest.x.parse import _parse_post_args
 
         self.parse = _parse_post_args
 
@@ -30,7 +30,7 @@ class TestPostIdExtraction(unittest.TestCase):
 
 class TestTreeBuild(unittest.TestCase):
     def test_chain_to_tree(self):
-        from hippo.parsers.x import XPost, arrange_into_tree
+        from cobrain.parsers.x import XPost, arrange_into_tree
 
         posts = [
             XPost(
@@ -67,7 +67,7 @@ class TestTreeBuild(unittest.TestCase):
 
 class TestTreeMergeInMemory(unittest.TestCase):
     def test_overlap_merge(self):
-        from hippo.parsers.x import XTree, XTreeNode, expand_and_merge_trees
+        from cobrain.parsers.x import XTree, XTreeNode, expand_and_merge_trees
 
         tree1_root = XTreeNode(
             id="shared123",
@@ -114,7 +114,7 @@ class TestTreeMergeInMemory(unittest.TestCase):
 
 class TestCacheFirstExpansion(unittest.TestCase):
     def test_skip_if_cached(self):
-        from hippo.parsers.x import (
+        from cobrain.parsers.x import (
             XTree,
             XTreeNode,
             expand_and_merge_trees,
@@ -169,7 +169,7 @@ class TestCacheFirstExpansion(unittest.TestCase):
 
 class TestPaginationAndBatching(unittest.TestCase):
     def test_page_size(self):
-        from hippo.parsers.x.helpers import calculate_page_size, DEFAULT_PAGE_SIZE
+        from cobrain.parsers.x.helpers import calculate_page_size, DEFAULT_PAGE_SIZE
 
         self.assertEqual(calculate_page_size(0), DEFAULT_PAGE_SIZE)
         self.assertEqual(calculate_page_size(100), 100)
@@ -194,10 +194,10 @@ class TestPaginationAndBatching(unittest.TestCase):
 
 
 class TestOAuthTokenExchange(unittest.TestCase):
-    @patch("hippo.parsers.x.auth.set_x_config")
+    @patch("cobrain.parsers.x.auth.set_x_config")
     @patch("xdk.oauth2_auth.OAuth2PKCEAuth")
     def test_exchange_without_api(self, mock_auth_class, mock_set_config):
-        from hippo.parsers.x.auth import OAuth2TokenManager
+        from cobrain.parsers.x.auth import OAuth2TokenManager
 
         mock_auth = MagicMock()
         mock_auth.code_verifier = "test_verifier"
@@ -221,7 +221,7 @@ class TestOAuthTokenExchange(unittest.TestCase):
 
 class TestConstants(unittest.TestCase):
     def test_types(self):
-        from hippo.parsers.x import (
+        from cobrain.parsers.x import (
             POST_TYPE_IDS,
             POST_TYPE_OWN,
             POST_TYPE_LIKED,

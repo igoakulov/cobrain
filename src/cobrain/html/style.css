@@ -1,0 +1,145 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family:
+        "Lato",
+        "SF Pro",
+        -apple-system,
+        BlinkMacSystemFont,
+        sans-serif;
+    font-weight: 300;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+}
+#graph {
+    width: 100vw;
+    height: 100vh;
+    touch-action: none;
+}
+.node {
+    cursor: pointer;
+}
+.link-parent,
+.link-related {
+    stroke: #777;
+    cursor: default;
+}
+.link-parent {
+    stroke-width: 2px;
+}
+.link-related {
+    stroke-width: 1px;
+    stroke-dasharray: 6, 6;
+}
+.node-circle {
+    stroke: none;
+}
+.node-circle.selected {
+    stroke: #e0e0e0;
+    stroke-width: 4px;
+}
+.node-circle:hover {
+    opacity: 0.8;
+}
+.node:hover circle,
+.node:hover text {
+    opacity: 0.8;
+}
+text,
+#search,
+.tooltip,
+#date-filter,
+#selection-status {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+text {
+    fill: #e0e0e0;
+}
+.tooltip {
+    position: absolute;
+    background: #333;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 10;
+}
+.tooltip.visible {
+    opacity: 0.8;
+}
+#search-container {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+#search-box {
+    width: 500px;
+    display: flex;
+    align-items: center;
+    background: #1a1a1a;
+    border: 2px solid #777;
+    border-radius: 20px;
+    color: #777;
+    font-size: 14px;
+    font-weight: 400;
+    opacity: 0.8;
+}
+#search-box:focus-within {
+    background: #e0e0e0;
+    border: 2px solid #e0e0e0;
+}
+#search {
+    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    color: #777;
+    font-size: inherit;
+    flex: 1;
+}
+#search::placeholder {
+    color: #777;
+}
+#search:focus {
+    outline: none;
+    background: transparent;
+    color: #333;
+}
+#date-filter {
+    width: 40px;
+    text-align: center;
+    cursor: pointer;
+    transform: translateY(1px);
+}
+#selection-status {
+    position: fixed;
+    padding: 4px 8px;
+    background: #333;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #e0e0e0;
+    display: none;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 100;
+}
+#selection-status.visible {
+    display: block;
+    opacity: 0.8;
+}
+#selection-status .key {
+    background: #777;
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 10px;
+}

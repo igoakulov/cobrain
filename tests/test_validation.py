@@ -3,12 +3,12 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from hippo.graph import build_graph, VALID_PROGRESS_VALUES
+from cobrain.graph import build_graph
 
 
 class TestValidation(unittest.TestCase):
     def setUp(self):
-        self.mock_scan = patch("hippo.graph.builder.scan_topics_dir")
+        self.mock_scan = patch("cobrain.graph.builder.scan_topics_dir")
 
     def test_validation_cases(self):
         cases = [
@@ -41,11 +41,6 @@ class TestValidation(unittest.TestCase):
                 "---\nid: empty-topic\ntitle: Empty\nparent:\nsources:\n---\n",
                 [],
                 ["empty_body"],
-            ),
-            (
-                "---\nid: bad-progress\ntitle: Bad\nparent:\nprogress: invalid-value\nsources:\n---\n# Bad\n",
-                [],
-                ["unknown_progress"],
             ),
             (
                 "# Title\n---\nid: topic-y\ntitle: Y\n---\n# Title\n",
@@ -106,9 +101,6 @@ class TestValidation(unittest.TestCase):
                         0,
                         f"Expected issue '{issue_type}' for: {yaml_content[:50]}",
                     )
-
-    def test_valid_progress_values(self):
-        self.assertEqual(VALID_PROGRESS_VALUES, {"new", "started", "completed"})
 
     def test_build_result_structure(self):
         mock_path = MagicMock()

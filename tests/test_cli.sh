@@ -12,7 +12,7 @@ rm -rf test-vault
 mkdir -p test-vault
 cd test-vault
 
-(hippo version > /dev/null 2>&1) && (hippo init --vault . > /dev/null 2>&1) && pass smoke || fail smoke
+(cobrain version > /dev/null 2>&1) && (cobrain vault --dir . > /dev/null 2>&1) && pass smoke || fail smoke
 
 mkdir -p topics
 
@@ -21,7 +21,6 @@ cat > topics/a.md << 'EOF'
 id: a
 title: Topic A
 aliases: alias-a,topic-a
-progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
 category: ml
@@ -40,7 +39,6 @@ cat > topics/b.md << 'EOF'
 id: b
 title: Topic B
 aliases: alias-b
-progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
 category: ml
@@ -60,7 +58,6 @@ cat > topics/c.md << 'EOF'
 id: c
 title: Topic C
 aliases:
-progress: started
 created_at: 2026-03-19
 updated_at: 2026-03-19
 category: nlp
@@ -78,7 +75,6 @@ cat > topics/orphan.md << 'EOF'
 id: orphan
 title: Orphan Topic
 aliases:
-progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
 category: ml
@@ -92,7 +88,7 @@ sources:
 Content for orphan.
 EOF
 
-(hippo sync > /dev/null 2>&1) && pass "sync with topics" || fail "sync with topics"
+(cobrain sync > /dev/null 2>&1) && pass "sync with topics" || fail "sync with topics"
 
 # Warnings test data - add topics with various warning conditions
 
@@ -112,7 +108,6 @@ cat > topics/no-parent.md << 'EOF'
 ---
 id: no-parent
 title: No Parent
-progress: new
 parent:
 sources: []
 ---
@@ -131,60 +126,58 @@ sources:
 EOF
 
 # Re-sync to pick up new topics
-hippo sync > /dev/null 2>&1
+cobrain sync > /dev/null 2>&1
 
 # Test warning hint appears without --warnings flag
-(hippo sync 2>&1 | grep -q "(add --warnings to see)") && pass "sync warning hint" || fail "sync warning hint"
-(hippo graph --sync 2>&1 | grep -q "(add --warnings to see)") && pass "graph warning hint" || fail "graph warning hint"
+(cobrain sync 2>&1 | grep -q "warnings.*run") && pass "sync warning hint" || fail "sync warning hint"
 
 # Test detailed warnings with --warnings flag
-(hippo sync --warnings 2>&1 | grep -q "^WARNINGS$") && pass "sync --warnings format" || fail "sync --warnings format"
-(hippo sync --warnings 2>&1 | grep -q "no-sources") && pass "sync no_sources warning" || fail "sync no_sources warning"
-(hippo sync --warnings 2>&1 | grep -q "no-parent") && pass "sync no_parent warning" || fail "sync no_parent warning"
-(hippo sync --warnings 2>&1 | grep -q "nonexistent-parent") && pass "sync orphan_parent warning" || fail "sync orphan_parent warning"
-(hippo sync --warnings 2>&1 | grep -q "Empty body") && pass "sync empty_body warning" || fail "sync empty_body warning"
+(cobrain sync --warnings 2>&1 | grep -q "^WARNINGS$") && pass "sync --warnings format" || fail "sync --warnings format"
+(cobrain sync --warnings 2>&1 | grep -q "no-sources") && pass "sync no_sources warning" || fail "sync no_sources warning"
+(cobrain sync --warnings 2>&1 | grep -q "no-parent") && pass "sync no_parent warning" || fail "sync no_parent warning"
+(cobrain sync --warnings 2>&1 | grep -q "nonexistent-parent") && pass "sync orphan_parent warning" || fail "sync orphan_parent warning"
+(cobrain sync --warnings 2>&1 | grep -q "Empty body") && pass "sync empty_body warning" || fail "sync empty_body warning"
 
-# Test --warnings (only works with sync or --sync)
-(hippo topics > /dev/null 2>&1) && pass "topics summary" || fail "topics summary"
-(hippo topics --ids a,b,c > /dev/null 2>&1) && pass "topics read" || fail "topics read"
-(hippo topics --ids a --sync > /dev/null 2>&1) && pass "topics read sync" || fail "topics read sync"
-(hippo topics --ids nonexistent 2>&1 | grep -q "Topic not found") && pass "topics read error" || fail "topics read error"
-(hippo topics --ids a --set progress=completed > /dev/null 2>&1) && pass "topics set single" || fail "topics set single"
-(hippo topics --ids b,c --set category=nlp progress=started > /dev/null 2>&1) && pass "topics set multiple" || fail "topics set multiple"
-(hippo topics --ids a --set progress=new category=ml aliases="[alias-a-new]" --sync > /dev/null 2>&1) && pass "topics set sync" || fail "topics set sync"
+# Test vault (list topics)
+(cobrain vault > /dev/null 2>&1) && pass "vault summary" || fail "vault summary"
+(cobrain vault --ids a,b,c > /dev/null 2>&1) && pass "vault read" || fail "vault read"
+(cobrain vault --ids nonexistent 2>&1 | grep -q "Topic not found") && pass "vault read error" || fail "vault read error"
 
-(hippo graph > /dev/null 2>&1) && pass "graph full" || fail "graph full"
-(hippo graph --sync > /dev/null 2>&1) && pass "graph sync" || fail "graph sync"
-(hippo graph --from a > /dev/null 2>&1) && pass "graph from" || fail "graph from"
-(hippo graph --from a --depth 1 > /dev/null 2>&1) && pass "graph from depth" || fail "graph from depth"
-(hippo graph --from b --to c > /dev/null 2>&1) && pass "graph path" || fail "graph path"
-(hippo graph --minimal > /dev/null 2>&1) && pass "graph minimal" || fail "graph minimal"
-(hippo graph --full > /dev/null 2>&1) && pass "graph full fields" || fail "graph full fields"
-(hippo graph --full+ > /dev/null 2>&1) && pass "graph full+" || fail "graph full+"
-(hippo graph --full+ --block > /dev/null 2>&1) && pass "graph full+ block" || fail "graph full+ block"
-(hippo graph --from b --depth 1 --full+ > /dev/null 2>&1) && pass "graph traversal full+" || fail "graph traversal full+"
-(hippo graph --from b --to c --block > /dev/null 2>&1) && pass "graph path block" || fail "graph path block"
-(hippo graph --from a --depth 1 --block > /dev/null 2>&1) && pass "graph neighborhood block" || fail "graph neighborhood block"
+(cobrain vault --ids a --set category=ml > /dev/null 2>&1) && pass "vault set single" || fail "vault set single"
+(cobrain vault --ids b,c --set category=nlp > /dev/null 2>&1) && pass "vault set multiple" || fail "vault set multiple"
+(cobrain vault --ids a --set category=ml aliases="[alias-a-new]" > /dev/null 2>&1) && pass "vault set sync" || fail "vault set sync"
 
-(hippo backup > /dev/null 2>&1) && pass backup || fail backup
+(cobrain vault > /dev/null 2>&1) && pass "vault full" || fail "vault full"
+(cobrain vault --from a > /dev/null 2>&1) && pass "vault from" || fail "vault from"
+(cobrain vault --from a --depth 1 > /dev/null 2>&1) && pass "vault from depth" || fail "vault from depth"
+(cobrain vault --from b --to c > /dev/null 2>&1) && pass "vault path" || fail "vault path"
+(cobrain vault --minimal > /dev/null 2>&1) && pass "vault minimal" || fail "vault minimal"
+(cobrain vault --full > /dev/null 2>&1) && pass "vault full fields" || fail "vault full fields"
+(cobrain vault --full+ > /dev/null 2>&1) && pass "vault full+" || fail "vault full+"
+(cobrain vault --full+ --block > /dev/null 2>&1) && pass "vault full+ block" || fail "vault full+ block"
+(cobrain vault --from b --depth 1 --full+ > /dev/null 2>&1) && pass "vault traversal full+" || fail "vault traversal full+"
+(cobrain vault --from b --to c --block > /dev/null 2>&1) && pass "vault path block" || fail "vault path block"
+(cobrain vault --from a --depth 1 --block > /dev/null 2>&1) && pass "vault neighborhood block" || fail "vault neighborhood block"
 
-(hippo topics --ids a,b,c --set category=modified-category > /dev/null 2>&1) && pass "modify topics" || fail "modify topics"
+(cobrain backup > /dev/null 2>&1) && pass backup || fail backup
 
-(python3 -c "import yaml; d=yaml.safe_load(open('.hippo/categories.yaml'))" > /dev/null 2>&1) && pass "categories valid" || fail "categories valid"
+(cobrain vault --ids a,b,c --set category=modified-category > /dev/null 2>&1) && pass "modify topics" || fail "modify topics"
 
-(hippo topics --ids b --set aliases="[new-alias]" related="[]" sources="[]" > /dev/null 2>&1) && pass "topics set multi-target" || fail "topics set multi-target"
-(hippo topics --ids b > /dev/null 2>&1) && pass "verify updated" || fail "verify updated"
+(cobrain show 2>&1 | grep -q "Vault page ready") && pass "show" || fail "show"
 
-(hippo topics --ids a --set category=ml > /dev/null 2>&1) && pass "reset category" || fail "reset category"
+(cobrain vault --ids b --set aliases="[new-alias]" related="[]" sources="[]" > /dev/null 2>&1) && pass "vault set multi-target" || fail "vault set multi-target"
+(cobrain vault --ids b > /dev/null 2>&1) && pass "verify updated" || fail "verify updated"
 
-(hippo sync > /dev/null 2>&1) && pass "sync" || fail "sync"
+(cobrain vault --ids a --set category=ml > /dev/null 2>&1) && pass "reset category" || fail "reset category"
+
+(cobrain sync > /dev/null 2>&1) && pass "sync" || fail "sync"
 
 # Sources warning tests
 mkdir -p sources
 echo "unused source content" > sources/unused.md
-(hippo sources 2>&1 | grep -q "warnings:") && pass "sources warning hint" || fail "sources warning hint"
-(hippo sources --warnings 2>&1 | grep -q "^UNUSED SOURCES") && pass "sources --warnings format" || fail "sources --warnings format"
-(hippo sources --warnings 2>&1 | grep -q "unused") && pass "sources unused warning" || fail "sources unused warning"
+(cobrain sources 2>&1 | grep -q "warnings:") && pass "sources warning hint" || fail "sources warning hint"
+(cobrain sources --warnings 2>&1 | grep -q "^UNUSED SOURCES") && pass "sources --warnings format" || fail "sources --warnings format"
+(cobrain sources --warnings 2>&1 | grep -q "unused") && pass "sources unused warning" || fail "sources unused warning"
 
 echo "---"
 if [ ${#FAILED[@]} -eq 0 ]; then

@@ -7,7 +7,7 @@ from pathlib import Path
 
 class TestContentTypes(unittest.TestCase):
     def setUp(self):
-        from hippo.parsers.chatgpt import (
+        from cobrain.parsers.chatgpt import (
             INCLUDE_CONTENT_TYPES,
             EXCLUDE_CONTENT_TYPES,
             should_include_message,
@@ -108,7 +108,7 @@ class TestContentTypes(unittest.TestCase):
 
 class TestFilters(unittest.TestCase):
     def setUp(self):
-        from hippo.parsers.chatgpt import filter_conversations
+        from cobrain.parsers.chatgpt import filter_conversations
 
         self.filter_conversations = filter_conversations
         self.convs = [
@@ -150,7 +150,7 @@ class TestFilters(unittest.TestCase):
 
 class TestExpand(unittest.TestCase):
     def setUp(self):
-        from hippo.parsers.chatgpt import (
+        from cobrain.parsers.chatgpt import (
             parse_conversation_expand,
             Conversation,
             get_last_message_id,
@@ -222,7 +222,7 @@ class TestExpand(unittest.TestCase):
                 [m.id for m in conv.messages], expected_ids, f"Failed for: {desc}"
             )
 
-        from hippo.parsers.chatgpt import get_output_filename
+        from cobrain.parsers.chatgpt import get_output_filename
 
         conv = self.parse_conversation_expand(self.base_conv_data, None)
         old_filename = get_output_filename(conv)
@@ -256,7 +256,7 @@ class TestExpand(unittest.TestCase):
         for msg_args, expected_id, desc in cases:
             msgs = []
             for i in range(0, len(msg_args), 3):
-                from hippo.parsers.chatgpt import MessageNode
+                from cobrain.parsers.chatgpt import MessageNode
 
                 msgs.append(
                     MessageNode(
@@ -277,7 +277,7 @@ class TestExpand(unittest.TestCase):
 
 class TestTransformations(unittest.TestCase):
     def setUp(self):
-        from hippo.parsers.chatgpt import _build_cite_lookups, _transform_content
+        from cobrain.parsers.chatgpt import _build_cite_lookups, _transform_content
 
         self.build_cite_lookups = _build_cite_lookups
         self.transform = _transform_content
@@ -468,7 +468,7 @@ class TestTransformations(unittest.TestCase):
 
 class TestMarkdown(unittest.TestCase):
     def setUp(self):
-        from hippo.parsers.chatgpt import (
+        from cobrain.parsers.chatgpt import (
             Conversation,
             MessageNode,
             conversation_to_markdown,
@@ -578,7 +578,7 @@ class TestMarkdown(unittest.TestCase):
 
 class TestLoad(unittest.TestCase):
     def test_load_multiple_conversations(self):
-        from hippo.parsers.chatgpt import load_conversations
+        from cobrain.parsers.chatgpt import load_conversations
 
         data = [
             {"conversation_id": "1", "title": "A", "create_time": 1.0, "mapping": {}},

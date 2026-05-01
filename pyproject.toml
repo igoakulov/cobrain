@@ -1,7 +1,7 @@
 [project]
-name = "hippo"
+name = "cobrain"
 version = "0.1.0"
-description = "Hippo is a tool for your AI agent to visualize, update and expand your personal knowledge locally on your device."
+description = "Cobrain CLI helps AI agents gather, organize and visualize owner's knowledge locally on device. Use it to back up and organize your knowledge, help AI agents read your mind, or map and track your learning progress."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -10,7 +10,8 @@ dependencies = [
 ]
 
 [project.scripts]
-hippo = "hippo.cli:main"
+cobrain = "cobrain.cli:main"
+brn = "cobrain.cli:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -21,3 +22,6 @@ target-version = "py311"
 
 [tool.pyright]
 pythonVersion = "3.11"
+
+[tool.deptry.per_rule_ignores]
+DEP003 = ["cobrain"]

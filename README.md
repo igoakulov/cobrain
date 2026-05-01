@@ -1,61 +1,38 @@
-# Hippo
+# Cobrain
 
-Hippo helps AI agents gather, organize and visualize owner's knowledge locally on device. Use it to back up and organize your knowledge, help AI agents read your mind, or map and track your learning progress.
+Cobrain CLI helps AI agents gather, organize and visualize owner's knowledge locally on device. Use it to back up and organize your knowledge, help AI agents read your mind, or map and track your learning progress.
 
 ## Quick Start
 
-TBD
+Install agent skill (to be published soon)
+
+Alternative (to be published soon):
+```bash
+pip install cobrain
+```
 
 ## Commands
 
 ```bash
-hippo init --vault <path>          # Create new vault
-hippo version                       # Show version
-hippo sync                         # Rebuild graph from files
-hippo topics                       # List topics with progress counts
-hippo topics --ids <ids>          # Get metadata (single or comma-separated)
-hippo topics --ids <ids> --set field=value...   # Update metadata
-hippo topics --ids <ids> --set ... --sync       # Update then sync
-hippo topics --sync --warnings               # Sync and show warnings
-hippo graph                         # View full graph
-hippo graph --minimal               # id, aliases, categories, parent, related
-hippo graph --full                  # minimal + title, progress, created_at, updated_at
-hippo graph --full+                 # full + sources, word_count
-hippo graph --flow                 # Flow style YAML (compact, default)
-hippo graph --block                # Block style YAML (multiline)
-hippo graph --from <id>           # View neighborhood
-hippo graph --from <id> --depth N # Traverse N levels
-hippo graph --from <id> --to <id2> # Find path
-hippo graph --sync                  # Sync before viewing
-hippo graph --sync --warnings       # Sync and show warnings
-hippo sources                       # View source stats
-hippo sources --ingest chatgpt --paths <path...>  # Ingest ChatGPT exports
-hippo sources --ingest chatgpt --paths <path...> --since <dt> --until <dt> --titles <titles>  # Ingest with filters
-hippo sources --ingest x --ids <post_ids>          # Ingest X posts by ID/URL/xurl (batch)
-hippo sources --ingest x --own                     # Ingest own posts (1 page, 10 posts)
-hippo sources --ingest x --own --count <N>         # Paginate (derived), fetch up to N posts
-hippo sources --ingest x --own --since-id <id> --until-id <id>  # Targeted range
-hippo sources --ingest x --own --new               # Catch-up: paginate (10/page), stop on cached
-hippo sources --ingest x --likes                   # Ingest liked posts (1 page, 10 posts)
-hippo sources --ingest x --likes --count <N>       # Paginate (derived), fetch up to N posts
-hippo sources --ingest x --likes --new             # Catch-up: paginate (10/page), stop on cached
-hippo sources --ingest x --bookmarks               # Ingest bookmarked posts (1 page, 10 posts)
-hippo sources --ingest x --bookmarks --count <N>   # Paginate (derived), fetch up to N posts
-hippo sources --ingest x --bookmarks --new         # Catch-up: paginate (10/page), stop on cached
-hippo backup                        # Create backup with diff from previous
+brn version                        # Show version
+brn vault --dir <path>             # Initialize/connect vault and create config
+brn sync [--warnings]              # Rebuild vault graph from files + show warnings
+brn show                           # Build and open vault.html in browser (+ generate categories.yaml for color customization)
+brn vault [--ids <ids>] [--minimal | --full | --full+] [--flow | --block]  # Get vault graph as YAML (select ids, topic metadata fields, YAML format)
+brn vault --ids <ids> --set field=value...  # Update metadata in topic file frontmatter + sync to graph
+brn vault --from <id> [--depth N]  # Neighborhood at N depth
+brn vault --from <id> --to <id2>   # Shortest path (parent links only)
+brn sources [--warnings]           # View source stats + warnings
+brn sources --ingest chatgpt --paths <path...> [--since <dt>] [--until <dt>] [--titles <titles]>  # Ingest ChatGPT conversations.json exports
+brn sources --ingest x --ids <post_ids>  # Ingest X posts by ID/URL/xurl
+brn sources --ingest x --own [--count <N> | --new | --since-id <id> --until-id <id>]  # Fetch own posts (default 10, count, all new until hit existing, or target range)
+brn sources --ingest x --own --authorization-code <code>  # First-time X auth
+brn sources --ingest x --likes [--count <N> | --new]  # Ingest liked posts
+brn sources --ingest x --bookmarks [--count <N> | --new]  # Ingest bookmarked posts
+brn backup                         # Copy vault.yaml + categories.yaml (up to 20)
 ```
 
 All `--ingest x` commands pull full conversation above the target post, and minimize API credits spent by always checking locally stored posts first.
-
-## Warnings
-
-Add `--warnings` to show and troubleshoot issues:
-- `hippo sync --warnings`
-- `hippo sources --warnings`
-- `hippo topics --sync --warnings`
-- `hippo graph --sync --warnings`
-
-Backup shows warning counts in summary.
 
 ## Topic Format
 
@@ -66,7 +43,6 @@ Topics are markdown files with YAML frontmatter:
 id: flashattention
 title: FlashAttention
 aliases: flash-attention
-progress: new
 created_at: 2026-03-19
 updated_at: 2026-03-19
 category: transformers
@@ -83,18 +59,18 @@ Your notes here...
 ## Vault Structure
 
 ```
-vault/
-├── topics/                   # Topics (.md), source of truth for CLI
-├── sources/                  # Cached sources
-│   ├── chats/                # ChatGPT (or other) conversations (.md)
-│   └── x/                    # X posts arranged in conversations (.yaml)
-└── .hippo/                   # App internals
-    ├── graph.yaml            # Derived graph (from topics)
-    ├── graph.html            # Visualization
-    ├── categories.yaml         # Category colors and titles
-    ├── backups/              # Rolling backups
-    ├── diffs/                # Change logs
-    └── logs/                 # Ingest logs
-        ├── chatgpt/          # ChatGPT ingest logs
-        └── x/                # X ingest logs
+vault/                    # User's vault directory
+├── vault.html            # Visualization for user
+├── topics/               # Topic files (.md), source of truth for CLI
+├── sources/              # Cached sources
+│   ├── chats/            # ChatGPT (or other) conversations (.md)
+│   └── x/                # X posts arranged in conversation trees (.yaml)
+└── .cobrain/             # App internals
+    ├── vault.yaml        # Derived vault graph (from topics)
+    ├── categories.yaml   # Category colors and titles
+    ├── backups/          # Rolling backups
+    ├── diffs/            # Change logs
+    └── logs/             # Ingest logs
+        ├── chatgpt/      # ChatGPT ingest logs
+        └── x/            # X ingest logs
 ```
