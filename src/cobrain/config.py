@@ -113,6 +113,9 @@ def init_vault(vault_path: Path) -> None:
     _ensure_config_key("vault_dir", str(vault_path))
     _ensure_config_key("x_oauth2_client_id", "")
     _ensure_config_key("x_oauth2_client_secret", "")
-    (vault_path / "topics/AGENTS.md").write_text(AGENTS_TOPIC_CONTENT)
+
+    agents_path = vault_path / "topics/AGENTS.md"
+    if not agents_path.exists():
+        agents_path.write_text(AGENTS_TOPIC_CONTENT)
 
     set_vault_dir(vault_path)
