@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from cobrain.cli.utils import _parse_iso_datetime
+from cobrain.config import _get_vault_dir as _get_vault_dir
 from cobrain.directories import (
     get_chats_dir,
     get_chats_logs_dir,
@@ -17,14 +18,14 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
     from cobrain.parsers.chatgpt import (
         load_conversations,
         filter_conversations,
-        parse_conversation_expand,
+        parse_conversation,
         conversation_to_markdown,
         compute_word_count,
         get_last_message_id,
         get_output_filename,
         get_existing_file_for_conversation,
-        message_to_markdown,
     )
+    from cobrain.parsers.chatgpt.utils import get_existing_last_message_id
 
     paths = [Path(p).expanduser().resolve() for p in args.paths]
     for path in paths:
@@ -60,25 +61,22 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
         titles = [t.strip() for t in args.titles.split(",") if t.strip()]
 
     conversations = []
-    path_by_conv_id: dict[str, Path] = {}
     for path in paths:
         convs = load_conversations(path)
-        for c in convs:
-            conv_id = c.get("conversation_id") or c.get("id", "")
-            path_by_conv_id[conv_id] = path
         conversations.extend(convs)
 
     filtered = filter_conversations(conversations, from_time, till_time, titles)
 
     chats_dir = get_chats_dir()
     logs_dir = get_chats_logs_dir()
+    vault_dir = _get_vault_dir()
     chats_dir.mkdir(parents=True, exist_ok=True)
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     created_files = []
     updated_files = []
+    skipped_files = []
 
-    log_entries = []
     ingest_timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
 
     for conv_data in filtered:
@@ -87,134 +85,81 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
         existing_file = get_existing_file_for_conversation(chats_dir, conv_id)
         existing_last_msg_id = None
         created_at = datetime.utcnow().isoformat()
-        existing_body = ""
         existing_title = None
 
         if existing_file:
-            existing_last_msg_id = _find_last_message_id_from_log(conv_id)
+            existing_last_msg_id = get_existing_last_message_id(existing_file)
             existing_content = existing_file.read_text(encoding="utf-8")
-            fm, existing_body = _split_frontmatter(existing_content)
+            fm, _ = _split_frontmatter(existing_content)
             created_at = _get_created_at_from_file(existing_file)
             existing_title = fm.get("title") if fm else None
 
-        conv = parse_conversation_expand(conv_data, existing_last_msg_id)
+        conv = parse_conversation(conv_data)
 
-        if existing_file:
-            updated_files.append(str(existing_file))
-        else:
-            if conv.messages:
-                created_files.append(get_output_filename(conv))
-            else:
-                continue
+        last_msg_id = get_last_message_id(conv)
+
+        if existing_last_msg_id and last_msg_id == existing_last_msg_id:
+            skipped_files.append(conv_id)
+            continue
 
         output_filename = get_output_filename(conv)
-        output_path = chats_dir / output_filename
+
+        if existing_file:
+            output_path = existing_file
+            rel_path = str(existing_file.relative_to(vault_dir))
+            updated_files.append((conv_id, last_msg_id, rel_path))
+        else:
+            output_path = chats_dir / output_filename
+            rel_path = f"sources/chatgpt/{output_filename}"
+            created_files.append((conv_id, last_msg_id, rel_path))
 
         updated_at = datetime.utcnow().isoformat()
-        last_msg_id = (
-            get_last_message_id(conv) if conv.messages else (existing_last_msg_id or "")
+        word_count = compute_word_count(conv)
+        title = existing_title or conv.title
+        content = conversation_to_markdown(
+            conv,
+            source_path=None,
+            word_count=word_count,
+            created_at=created_at,
+            updated_at=updated_at,
+            last_message_id=last_msg_id,
+            title=title,
         )
-
-        if existing_file and existing_body.strip():
-            existing_word_count = _get_word_count_from_file(existing_file)
-            word_count = existing_word_count + compute_word_count(conv)
-
-            body_content = existing_body.rstrip("\n")
-            if conv.messages:
-                if body_content:
-                    body_content += "\n\n***\n\n"
-                for msg in conv.messages:
-                    body_content += message_to_markdown(msg)
-                    body_content += "\n\n***\n\n"
-
-            new_fm = _build_frontmatter(
-                conv_id=conv_id,
-                conv_title=existing_title or conv.title,
-                created_at=created_at,
-                updated_at=updated_at,
-                original_create_time=conv.create_time,
-                word_count=word_count,
-                urls=conv.sources,
-            )
-            content = new_fm + "\n" + body_content.rstrip()
-        else:
-            word_count = compute_word_count(conv)
-            title = existing_title or conv.title
-            content = conversation_to_markdown(
-                conv,
-                source_path=None,
-                word_count=word_count,
-                created_at=created_at,
-                updated_at=updated_at,
-                title=title,
-            )
 
         output_path.write_text(content, encoding="utf-8")
 
-        log_entries.append(
-            {
-                "conversation_id": conv_id,
-                "output_file": str(output_path),
-                "last_message_id": last_msg_id,
-                "ingested_at": ingest_timestamp,
-                "filters": {
-                    "since": args.since_datetime,
-                    "until": args.until_datetime,
-                    "titles": args.titles,
-                },
-            }
-        )
+    log_parts = ["brn", "sources", "--ingest", args.ingest, "--paths"]
+    log_parts.extend(args.paths)
+    if args.since_datetime:
+        log_parts.extend(["--since", args.since_datetime])
+    if args.until_datetime:
+        log_parts.extend(["--until", args.until_datetime])
+    if args.titles:
+        log_parts.extend(["--titles", args.titles])
 
-    if log_entries:
+    log_data = {
+        "created_at": ingest_timestamp,
+        "command": " ".join(log_parts),
+        "files_created": [
+            {"conversation_id": c_id, "last_message_id": lmid, "output_file": opf}
+            for c_id, lmid, opf in created_files
+        ],
+        "files_updated": [
+            {"conversation_id": c_id, "last_message_id": lmid, "output_file": opf}
+            for c_id, lmid, opf in updated_files
+        ],
+        "skipped": len(skipped_files),
+    }
+
+    if log_data["files_created"] or log_data["files_updated"]:
         log_path = get_chat_log_path(ingest_timestamp)
-        write_yaml(log_path, log_entries)
+        write_yaml(log_path, log_data)
 
     total_created = len(created_files)
     total_updated = len(updated_files)
-    print(f"Ingest complete: {total_created} created, {total_updated} updated")
-
-
-def _find_last_message_id_from_log(conv_id: str) -> str | None:
-    from cobrain.yaml_utils import read_yaml
-
-    logs_dir = get_chats_logs_dir()
-    if not logs_dir.exists():
-        return None
-    for log_file in logs_dir.glob("ingest_*.yaml"):
-        log_data = read_yaml(log_file)
-        if not log_data:
-            continue
-        if isinstance(log_data, list):
-            for entry in log_data:
-                if not isinstance(entry, dict):
-                    continue
-                if entry.get("conversation_id") == conv_id:
-                    return entry.get("last_message_id")
-    return None
-
-
-def _get_created_at_from_file(file_path: Path) -> str:
-    try:
-        content = file_path.read_text(encoding="utf-8")
-        pattern = re.compile(r"^created_at:\s*(.+)$", re.MULTILINE)
-        match = pattern.search(content)
-        if match:
-            return match.group(1).strip()
-    except Exception:
-        pass
-    return datetime.utcnow().isoformat()
-
-
-def _get_word_count_from_file(file_path: Path) -> int:
-    try:
-        content = file_path.read_text(encoding="utf-8")
-        pattern = re.compile(r"^word_count:\s*(\d+)$", re.MULTILINE)
-        match = pattern.search(content)
-        if match:
-            return int(match.group(1))
-    except Exception:
-        pass
-    return 0
+    print(
+        f"Ingest complete: {total_created} created, {total_updated} updated, {len(skipped_files)} skipped"
+    )
 
 
 def _split_frontmatter(content: str) -> tuple[dict, str]:
@@ -233,28 +178,13 @@ def _split_frontmatter(content: str) -> tuple[dict, str]:
     return {}, content
 
 
-def _build_frontmatter(
-    conv_id: str,
-    conv_title: str,
-    created_at: str,
-    updated_at: str,
-    original_create_time: float,
-    word_count: int,
-    urls: list[str],
-) -> str:
-    from cobrain.parsers.chatgpt import format_timestamp
-
-    lines = ["---"]
-    lines.append(f"id: {conv_id}")
-    lines.append(f"title: {conv_title}")
-    lines.append(f"created_at: {created_at}")
-    lines.append(f"updated_at: {updated_at}")
-    lines.append(
-        f"original_conversation_created_at: {format_timestamp(original_create_time)}"
-    )
-    lines.append(f"word_count: {word_count}")
-    lines.append("sources:")
-    for url in urls:
-        lines.append(f"  - {url}")
-    lines.append("---")
-    return "\n".join(lines)
+def _get_created_at_from_file(file_path: Path) -> str:
+    try:
+        content = file_path.read_text(encoding="utf-8")
+        pattern = re.compile(r"^created_at:\s*(.+)$", re.MULTILINE)
+        match = pattern.search(content)
+        if match:
+            return match.group(1).strip()
+    except Exception:
+        pass
+    return datetime.utcnow().isoformat()

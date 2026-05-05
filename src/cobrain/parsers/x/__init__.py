@@ -28,6 +28,7 @@ from cobrain.parsers.x.storage import (
     get_output_filename,
     load_all_cached_trees,
     tree_to_yaml,
+    find_tree_file_by_id,
 )
 
 __all__ = [
@@ -46,6 +47,7 @@ __all__ = [
     "get_output_filename",
     "load_all_cached_trees",
     "tree_to_yaml",
+    "find_tree_file_by_id",
     "POST_TYPE_IDS",
     "POST_TYPE_OWN",
     "POST_TYPE_LIKED",

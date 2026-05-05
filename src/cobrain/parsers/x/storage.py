@@ -17,7 +17,7 @@ def load_all_cached_trees() -> list[XTree]:
         return []
 
     cached_trees: list[XTree] = []
-    for tree_file in trees_dir.glob("*.yaml"):
+    for tree_file in trees_dir.rglob("*.yaml"):
         data = read_yaml(tree_file)
         if not data:
             continue
@@ -42,7 +42,7 @@ def get_existing_post_ids() -> set[str]:
         return set()
 
     post_ids: set[str] = set()
-    for tree_file in trees_dir.glob("*.yaml"):
+    for tree_file in trees_dir.rglob("*.yaml"):
         data = read_yaml(tree_file)
         if not data:
             continue
@@ -85,9 +85,33 @@ def tree_to_yaml(tree: XTree) -> dict:
     return result
 
 
-def save_tree(tree: XTree) -> None:
+def find_tree_file_by_id(post_id: str) -> Path | None:
+    trees_dir = get_x_trees_dir()
+    if not trees_dir.exists():
+        return None
+
+    for tree_file in trees_dir.rglob("*.yaml"):
+        data = read_yaml(tree_file)
+        if not data:
+            continue
+        root_id = data.get("id")
+        if root_id == post_id:
+            return tree_file
+        xurl = data.get("xurl", "")
+        if xurl:
+            parts = xurl.split("/status/")
+            if len(parts) == 2 and parts[1] == post_id:
+                return tree_file
+    return None
+
+
+def save_tree(tree: XTree, existing_path: Path | None = None) -> Path:
     trees_dir = get_x_trees_dir()
     trees_dir.mkdir(parents=True, exist_ok=True)
-    filename = get_output_filename(tree)
-    tree_path = trees_dir / filename
+    if existing_path:
+        tree_path = existing_path
+    else:
+        filename = get_output_filename(tree)
+        tree_path = trees_dir / filename
     write_yaml(tree_path, tree_to_yaml(tree))
+    return tree_path

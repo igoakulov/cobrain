@@ -8,6 +8,37 @@ Cobrain CLI helps AI agents gather, organize and visualize owner's knowledge in 
 
 ![Cobrain screenshot](cobrain.png)
 
+## Who Cobrain is for
+
+**Personal Use**
+- Heavy X users who want a context-rich backup of full conversations/articles/bookmarks/likes that's easy to digest and search
+- People who want an effortless way to map out their knowledge and learning progress across multiple sources (ChatGPT, X, AI chats, internet, local files)
+- Users of AI agents like Claude/Codex/OpenClaw/Hermes who want them to be more personalized and up to date with their constantly evolving needs and interests
+
+**Work & Projects**
+- People/agents collaborating on a project and needing shared, persistent, high-signal context
+- Developers building AI agents who need simple plug-and-play knowledge management
+
+## Why Cobrain?
+
+| | Agent + Cobrain | Agent Alone | Agent + Obsidian |
+|-----------|-----------------|-------------|------------------|
+| **Token Efficiency** | Best - CLI optimizes entire agent workflow | Worst - use only shell+files or code own tools | Worse - built for humans / MCP |
+| **Setup** | Simplest - install skill | Simple - API key + custom AGENTS.md | From OK to Complex |
+| **Source Integrations** | Best - ChatGPT + X built-in | Worst - custom code only | Worse - varies by solution |
+| **Visualization** | Good - portable single-page vault.html (D3js) | Worst - optional external | Best - great plugins (excellent) |
+| **Ease of Use (Agent)** | Best - agent-native design + skill | Worst - starts with no tools/guidelines | Worse - built for humans |
+
+## Features
+
+- **Fully Agent-Managed** - Human just talks to their agent (OpenClaw, Hermes, Claude Code, Codex etc.); agent autonomously ingests sources, creates/updates topics, finds info, maintains graph, runs health checks
+- **Built-in Source Integrations** - X + ChatGPT ready to ingest with one command
+- **Context-Rich X Conversations** - Pull full conversations up to original post/article
+- **Token-Efficient Agent Workflow** - CLI/skill guide and optimize agent's work and token usage, health check tooling & guidelines
+- **Graph Visualization** - `vault.html` for humans: interactive color-coded graph, instant search/filter, keyboard shortcuts, "copy selection (incl. hierarchy)" to refer/discuss with agent
+- **Local-First & Portable** - On-device, portable and self-contained `vault/` folder, multiple vaults supported (e.g. per project, personal/work), standalone sharable `vault.html`
+- **Light & Customizable** - ~4.5K LOC, no dependencies/frameworks, easy customization by agent
+
 ## Installation & Setup
 
 Install agent skill in your harness: [skills/cobrain-vault](skills/cobrain-vault). Agent does the rest.
@@ -15,28 +46,34 @@ Install agent skill in your harness: [skills/cobrain-vault](skills/cobrain-vault
 Alternative:
 ```bash
 pip install cobrain
+cd <vault-path>
+brn init  #  creates vault structure below
 ```
+
+Multiple vaults (per project, personal/work) supported with distinct vault-local config.
 
 ## Vault
 
 ```
 vault/
-├── vault.html            # Visual graph with search/filters for human user
-├── topics/               # Topic files (.md), source of truth for CLI
+├── vault.html            # standalone shareable page with search/filters for human user
+├── topics/               # topic files (.md), source of truth for CLI
 ├── sources/
 │   ├── chats/            # ChatGPT conversations (.md)
 │   ├── x/                # X conversations (.yaml)
-│   └── ...               # Add more for other sources
-└── .cobrain/             # App internals, read but never edit directly
-    ├── vault.yaml        # Derived graph of topics, with metadata
-    ├── categories.yaml   # Customizable topic category colors / titles
-    ├── backups/          # Rolling backups
-    ├── diffs/            # Diffs from backups
-    └── logs/             # Ingest logs
+│   └── ...               # add more for other sources
+└── .cobrain/             # app internals, read but never edit directly
+    ├── config            # used to detect vault
+    ├── vault.yaml        # derived graph of topics, with metadata
+    ├── categories.yaml   # customizable topic category colors / titles
+    ├── backups/          # rolling backups
+    ├── diffs/            # diffs from backups
+    └── logs/             # ingest logs
         ├── chatgpt/
         └── x/
 ```
 
+`vault/` is self-contained and portable.
 `vault/sources/`: raw content ingested from external systems (ChatGPT, X, user-provided documents, your own chat with user), users never read this.
 `vault/topics/`: curated summaries users read, source of truth for everything.
 
@@ -44,11 +81,11 @@ vault/
 
 ```bash
 brn version                        # show version
-brn vault --dir <path>             # initialize new/existing vault, write config
+brn init                           # initialize vault in current directory
 brn sync [--warnings]              # build graph from files + show warnings
 brn show                           # build and open vault.html in browser
 brn vault [--ids <ids>] [--minimal | --full | --full+] [--flow | --block]  # get graph as YAML (select ids, topic metadata fields, YAML format)
-brn vault --ids <ids> --set field=value...   # update topic frontmatter + sync
+brn vault --ids <ids> --set field=value...  # update topic frontmatter + sync
 brn vault --from <id> [--depth N]  # subtree
 brn vault --from <id> --to <id2>   # shortest path (parent links only)
 brn sources [--warnings]           # view source stats + warnings

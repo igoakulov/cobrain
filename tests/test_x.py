@@ -1,13 +1,14 @@
 """Tests for X ingest functionality."""
 
 import unittest
-import tempfile
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+from tests.base import TestCase, TEST_VAULT
 
-class TestPostIdExtraction(unittest.TestCase):
+
+class TestPostIdExtraction(TestCase):
     def setUp(self):
+        super().setUp()
         from cobrain.cli.ingest.x.parse import _parse_post_args
 
         self.parse = _parse_post_args
@@ -28,7 +29,7 @@ class TestPostIdExtraction(unittest.TestCase):
                     self.assertEqual(result[0], expected)
 
 
-class TestTreeBuild(unittest.TestCase):
+class TestTreeBuild(TestCase):
     def test_chain_to_tree(self):
         from cobrain.parsers.x import XPost, arrange_into_tree
 
@@ -65,7 +66,7 @@ class TestTreeBuild(unittest.TestCase):
         self.assertIn("alice", tree.conversation_xurl)
 
 
-class TestTreeMergeInMemory(unittest.TestCase):
+class TestTreeMergeInMemory(TestCase):
     def test_overlap_merge(self):
         from cobrain.parsers.x import XTree, XTreeNode, expand_and_merge_trees
 
@@ -112,14 +113,13 @@ class TestTreeMergeInMemory(unittest.TestCase):
         self.assertEqual(tree1_root.children[0].id, "reply456")
 
 
-class TestCacheFirstExpansion(unittest.TestCase):
+class TestCacheFirstExpansion(TestCase):
     def test_skip_if_cached(self):
         from cobrain.parsers.x import (
             XTree,
             XTreeNode,
             expand_and_merge_trees,
             save_tree,
-            get_x_trees_dir,
         )
 
         cached_root = XTreeNode(
@@ -153,21 +153,23 @@ class TestCacheFirstExpansion(unittest.TestCase):
             conversation_xurl="bob/status/new456",
         )
 
-        with tempfile.TemporaryDirectory() as tmp:
-            with patch.object(get_x_trees_dir, "__call__", return_value=Path(tmp)):
-                save_tree(cached_tree)
+        with patch(
+            "cobrain.parsers.x.storage.get_x_trees_dir",
+            return_value=TEST_VAULT / "sources" / "x",
+        ):
+            save_tree(cached_tree)
 
-            new_trees = {"new456": new_tree}
-            cached_trees = {"cached123": cached_tree}
-            updated = set()
+        new_trees = {"new456": new_tree}
+        cached_trees = {"cached123": cached_tree}
+        updated = set()
 
-            expand_and_merge_trees(new_trees, cached_trees, updated)
+        expand_and_merge_trees(new_trees, cached_trees, updated)
 
-            self.assertIn("cached123", updated)
-            self.assertEqual(len(new_trees), 0)
+        self.assertIn("cached123", updated)
+        self.assertEqual(len(new_trees), 0)
 
 
-class TestPaginationAndBatching(unittest.TestCase):
+class TestPaginationAndBatching(TestCase):
     def test_page_size(self):
         from cobrain.parsers.x.helpers import calculate_page_size, DEFAULT_PAGE_SIZE
 
@@ -193,7 +195,7 @@ class TestPaginationAndBatching(unittest.TestCase):
         self.assertEqual(len(chunks[2]), 50)
 
 
-class TestOAuthTokenExchange(unittest.TestCase):
+class TestOAuthTokenExchange(TestCase):
     @patch("cobrain.parsers.x.auth.set_x_config")
     @patch("xdk.oauth2_auth.OAuth2PKCEAuth")
     def test_exchange_without_api(self, mock_auth_class, mock_set_config):
@@ -219,7 +221,7 @@ class TestOAuthTokenExchange(unittest.TestCase):
         mock_set_config.assert_called()
 
 
-class TestConstants(unittest.TestCase):
+class TestConstants(TestCase):
     def test_types(self):
         from cobrain.parsers.x import (
             POST_TYPE_IDS,

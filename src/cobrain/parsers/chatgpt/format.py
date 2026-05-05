@@ -113,13 +113,13 @@ def conversation_to_markdown(
     lines.append(
         f"original_conversation_created_at: {format_timestamp(conv.create_time)}"
     )
+    if last_message_id:
+        lines.append(f"last_message_id: {last_message_id}")
     lines.append(f"word_count: {word_count}")
     lines.append("sources:")
     if conv.sources:
         for source in conv.sources:
             lines.append(f"  - {source}")
-    if last_message_id:
-        lines.append(f"last_message_id: {last_message_id}")
     lines.append("---")
     lines.append("")
 

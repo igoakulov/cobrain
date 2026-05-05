@@ -14,6 +14,19 @@ def cmd_version(args: argparse.Namespace) -> None:
     print(__version__)
 
 
+def cmd_init(args: argparse.Namespace) -> None:
+    from cobrain.config import init_vault
+    from pathlib import Path
+
+    vault_path = Path.cwd().resolve()
+    try:
+        init_vault(vault_path)
+        print(f"Vault initialized at: {vault_path}")
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main() -> None:
     def _signal_handler(signum, frame):
         print("\nInterrupted", file=sys.stderr)
@@ -32,17 +45,16 @@ def main() -> None:
     version_parser = subparsers.add_parser("version", help="Show version")
     version_parser.set_defaults(func=cmd_version)
 
+    init_parser = subparsers.add_parser(
+        "init", help="Initialize vault in current directory"
+    )
+    init_parser.set_defaults(func=cmd_init)
+
     sync_parser = subparsers.add_parser("sync", help="Rebuild vault graph from files")
     sync_parser.add_argument("--warnings", action="store_true", help="Show warnings")
     sync_parser.set_defaults(func=cmd_sync)
 
     vault_parser = subparsers.add_parser("vault", help="List or update topics")
-
-    vault_parser.add_argument(
-        "--dir",
-        dest="vault_dir",
-        help="Path to vault directory (initializes if not found)",
-    )
 
     vault_parser.add_argument(
         "--set", nargs="+", help="Set metadata for --ids (also syncs)"

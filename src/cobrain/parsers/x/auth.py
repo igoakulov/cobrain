@@ -34,7 +34,7 @@ class OAuth2TokenManager:
     def get_token(self) -> str:
         if not self.client_id or not self.client_secret:
             raise RuntimeError(
-                "Set x_oauth2_client_id and x_oauth2_client_secret in config (~/.config/cobrain). Use $VAR for env vars."
+                "Set x_oauth2_client_id and x_oauth2_client_secret in vault config. Use $VAR for env vars."
             )
 
         if self.authorization_code and not self.access_token:
@@ -71,8 +71,8 @@ class OAuth2TokenManager:
                 access_token, refresh_token, tokens.get("expires_in", 7200)
             )
             return access_token
-        except Exception:
-            raise RuntimeError("OAuth2 authorization required.")
+        except Exception as e:
+            raise RuntimeError(str(e)) from e
 
     def _exchange_code(self) -> str:
         from xdk.oauth2_auth import OAuth2PKCEAuth

@@ -90,8 +90,10 @@ class XClient:
                 if post:
                     posts.append(post)
             return posts
-        except Exception:
-            return []
+        except Exception as e:
+            if isinstance(e, RuntimeError):
+                raise
+            raise RuntimeError(f"X API error fetching posts: {e}")
 
     def get_posts(
         self,
@@ -115,7 +117,7 @@ class XClient:
         else:
             page_size = DEFAULT_PAGE_SIZE
 
-        should_paginate = since_id or until_id or count is not None
+        should_paginate = since_id or until_id or count is not None or is_new
 
         params = get_base_params(page_size)
         if since_id is not None:
@@ -124,27 +126,32 @@ class XClient:
             params["until_id"] = until_id
 
         all_posts: list[XPost] = []
-        response_gen = fetch_fn(client, user_id, params)
+        try:
+            response_gen = fetch_fn(client, user_id, params)
 
-        for response in response_gen:
-            if response.data:
-                includes = getattr(response, "includes", {}) or {}
-                for tweet in response.data:
-                    post = _parse_post_data(tweet, includes, post_type=post_type)
+            for response in response_gen:
+                if response.data:
+                    includes = getattr(response, "includes", {}) or {}
+                    for tweet in response.data:
+                        post = _parse_post_data(tweet, includes, post_type=post_type)
 
-                    if is_new and post.id in existing_ids:
-                        return all_posts
+                        if is_new and post.id in existing_ids:
+                            return all_posts
 
-                    all_posts.append(post)
+                        all_posts.append(post)
 
-                    if count and len(all_posts) >= count:
-                        return all_posts
+                        if count and len(all_posts) >= count:
+                            return all_posts
 
-            meta = getattr(response, "meta", None)
-            next_token = meta.next_token if meta else None
+                meta = getattr(response, "meta", None)
+                next_token = meta.next_token if meta else None
 
-            if not should_paginate or not next_token:
-                break
+                if not should_paginate or not next_token:
+                    break
+        except Exception as e:
+            if isinstance(e, RuntimeError):
+                raise
+            raise RuntimeError(f"X API error fetching posts: {e}")
 
         return all_posts
 

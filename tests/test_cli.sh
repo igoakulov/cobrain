@@ -12,9 +12,7 @@ rm -rf test-vault
 mkdir -p test-vault
 cd test-vault
 
-(cobrain version > /dev/null 2>&1) && (cobrain vault --dir . > /dev/null 2>&1) && pass smoke || fail smoke
-
-mkdir -p topics
+cobrain init > /dev/null 2>&1 && pass smoke || fail smoke
 
 cat > topics/a.md << 'EOF'
 ---

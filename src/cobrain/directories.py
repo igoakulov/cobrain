@@ -1,29 +1,14 @@
 from pathlib import Path
 
-from cobrain.config import get_vault_dir as _config_get_vault_dir
-
-_vault_dir: Path | None = None
-
-
-def _get_vault_dir() -> Path:
-    global _vault_dir
-    if _vault_dir is None:
-        config_vault = _config_get_vault_dir()
-        if config_vault:
-            _vault_dir = config_vault
-        else:
-            raise RuntimeError(
-                "Vault not found. Run `cobrain vault --dir <path>` to set vault_dir in config."
-            )
-    return _vault_dir
+from cobrain.config import _get_vault_dir as _config_get_vault_dir
 
 
 def get_vault_dir() -> Path:
-    return _get_vault_dir() / ".cobrain"
+    return _config_get_vault_dir() / ".cobrain"
 
 
 def get_topic_path(topic_id: str) -> Path:
-    return _get_vault_dir() / "topics" / f"{topic_id}.md"
+    return _config_get_vault_dir() / "topics" / f"{topic_id}.md"
 
 
 def get_backups_dir() -> Path:
@@ -43,7 +28,7 @@ def get_categories_path() -> Path:
 
 
 def get_chats_dir() -> Path:
-    return _get_vault_dir() / "sources" / "chats"
+    return _config_get_vault_dir() / "sources" / "chats"
 
 
 def get_chats_logs_dir() -> Path:
@@ -55,7 +40,7 @@ def get_chat_log_path(timestamp: str) -> Path:
 
 
 def get_x_dir() -> Path:
-    return _get_vault_dir() / "sources" / "x"
+    return _config_get_vault_dir() / "sources" / "x"
 
 
 def get_x_trees_dir() -> Path:
@@ -72,13 +57,13 @@ def get_x_log_path(timestamp: str) -> Path:
 
 class _VaultDirProxy:
     def __truediv__(self, other: str) -> Path:
-        return _get_vault_dir() / other
+        return _config_get_vault_dir() / other
 
     def __rtruediv__(self, other: str) -> Path:
-        return other / _get_vault_dir()
+        return other / _config_get_vault_dir()
 
     def __fspath__(self) -> str:
-        return str(_get_vault_dir())
+        return str(_config_get_vault_dir())
 
 
 VAULT_DIR = _VaultDirProxy()

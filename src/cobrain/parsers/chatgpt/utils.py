@@ -49,7 +49,9 @@ def get_existing_last_message_id(file_path: Path) -> str | None:
 def get_existing_file_for_conversation(
     chats_dir: Path, conversation_id: str
 ) -> Path | None:
-    for md_file in chats_dir.glob("*.md"):
+    if not chats_dir.exists():
+        return None
+    for md_file in chats_dir.rglob("*.md"):
         try:
             content = md_file.read_text(encoding="utf-8")
             id_pattern = re.compile(r"^id:\s*(.+)$", re.MULTILINE)

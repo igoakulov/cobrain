@@ -17,8 +17,11 @@ Cobrain CLI helps AI agents gather, organize and visualize owner's knowledge in 
 
 ```bash
 pip install cobrain
-brn vault --dir <path>  # initializes new or existing vault, writes `~/.config/cobrain`
+cd <vault-path>
+brn init  #  creates vault structure below
 ```
+
+Multiple vaults (per project, personal/work) supported with distinct vault-local config.
 
 ---
 
@@ -26,22 +29,24 @@ brn vault --dir <path>  # initializes new or existing vault, writes `~/.config/c
 
 ```
 vault/
-├── vault.html            # Visual graph with search/filters for human user
-├── topics/               # Topic files (.md), source of truth for CLI
+├── vault.html            # standalone shareable page with search/filters for human user
+├── topics/               # topic files (.md), source of truth for CLI
 ├── sources/
 │   ├── chats/            # ChatGPT conversations (.md)
 │   ├── x/                # X conversations (.yaml)
-│   └── ...               # Add more for other sources
-└── .cobrain/             # App internals, read but never edit directly
-    ├── vault.yaml        # Derived graph of topics, with metadata
-    ├── categories.yaml   # Customizable topic category colors / titles
-    ├── backups/          # Rolling backups
-    ├── diffs/            # Diffs from backups
-    └── logs/             # Ingest logs
+│   └── ...               # add more for other sources
+└── .cobrain/             # app internals, read but never edit directly
+    ├── config            # used to detect vault
+    ├── vault.yaml        # derived graph of topics, with metadata
+    ├── categories.yaml   # customizable topic category colors / titles
+    ├── backups/          # rolling backups
+    ├── diffs/            # diffs from backups
+    └── logs/             # ingest logs
         ├── chatgpt/
         └── x/
 ```
 
+`vault/` is self-contained and portable.
 `vault/sources/`: raw content ingested from external systems (ChatGPT, X, user-provided documents, your own chat with user), users never read this.
 `vault/topics/`: curated summaries users read, source of truth for everything.
 
@@ -122,7 +127,7 @@ X Prerequisites (at the time of writing):
    - Type: Web App, Automated App, or Bot
    - Callback URI: http://127.0.0.1
 2. Ensure sufficient X API credits
-3. Save OAuth 2 credentials in `~/.config/cobrain/config`:
+3. Save OAuth 2 credentials in `vault/.cobrain/config`:
    ```
    x_oauth2_client_id=$X_OAUTH2_CLIENT_ID
    x_oauth2_client_secret=$X_OAUTH2_CLIENT_SECRET
@@ -138,6 +143,15 @@ Read non-integrated sources (webpage, file, chat) directly and choose:
 1. Generate markdown recap in `vault/sources/` - to preserve full details for info-dense sources
 2. Copy file/shortcut for easy access
 3. Skip `vault/sources`, update/create topic directly + set as `source` in frontmatter - when extra effort is not worth it
+
+#### Managing sources
+
+Organize each source with subfolders to help your workflow. Examples:
+- Move X conversations with no value to topics to `sources/x/junk/` to avoid reading (wastes tokens, pollutes context) in next agent session
+- Move ingested but unprocessed ChatGPT chats to `souces/chats/pending/` or similar, so that unfinished state isn't lost in translation between agent sessions
+- Find and update any old source filepath in topics frontmatter after you move the file.
+- Note unfinished work for the next agent/session in `topics/AGENTS.md` or equivalent. Example: "Process `sources/x/pending/` into topics."
+
 
 ---
 
@@ -265,11 +279,11 @@ Run `brn backup` to:
 
 ```bash
 brn version                        # show version
-brn vault --dir <path>             # initialize new/existing vault, write config
+brn init                           # initialize vault in current directory
 brn sync [--warnings]              # build graph from files + show warnings
 brn show                           # build and open vault.html in browser
 brn vault [--ids <ids>] [--minimal | --full | --full+] [--flow | --block]  # get graph as YAML (select ids, topic metadata fields, YAML format)
-brn vault --ids <ids> --set field=value...   # update topic frontmatter + sync
+brn vault --ids <ids> --set field=value...  # update topic frontmatter + sync
 brn vault --from <id> [--depth N]  # subtree
 brn vault --from <id> --to <id2>   # shortest path (parent links only)
 brn sources [--warnings]           # view source stats + warnings

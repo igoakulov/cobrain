@@ -11,15 +11,19 @@ from cobrain.parsers.x import (
     save_tree,
     expand_and_merge_trees,
     arrange_into_tree,
-    get_output_filename,
     sort_tree_by_time,
     _find_tree_containing,
+    find_tree_file_by_id,
     POST_TYPE_IDS,
     POST_TYPE_OWN,
     POST_TYPE_LIKED,
     POST_TYPE_BOOKMARKED,
 )
-from cobrain.directories import get_x_log_path, get_x_logs_dir
+from cobrain.config import _get_vault_dir as _get_vault_dir
+from cobrain.directories import (
+    get_x_log_path,
+    get_x_logs_dir,
+)
 from cobrain.yaml_utils import write_yaml
 
 X_ENDPOINTS = (POST_TYPE_OWN, POST_TYPE_LIKED, POST_TYPE_BOOKMARKED)
@@ -77,13 +81,10 @@ def _ingest_posts(client, args, post_ids: list[str], endpoint: str | None) -> No
                 existing_ids=existing_ids,
                 is_new=is_new,
             )
-        else:
-            posts = []
-
-        for post in posts:
-            target_ids_returned.append(post.id)
-            if not _find_tree_containing(cached_trees, post.id):
-                target_posts.append(post)
+            for post in posts:
+                target_ids_returned.append(post.id)
+                if not _find_tree_containing(cached_trees, post.id):
+                    target_posts.append(post)
 
     else:
         print(
@@ -111,12 +112,18 @@ def _ingest_posts(client, args, post_ids: list[str], endpoint: str | None) -> No
     updated = []
     ingest_timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
     warnings: list[str] = []
+    vault_dir = _get_vault_dir()
 
-    def save_tree_with_ref(tree: XTree) -> str | None:
+    new_tree_ids = set(new_trees.keys())
+    updated_tree_ids = set(updated_tree_ids)
+
+    def save_tree_with_ref(tree: XTree) -> tuple[str, bool] | None:
+        existing_path = find_tree_file_by_id(tree.root.id)
         sort_tree_by_time(tree.root)
-        filename = get_output_filename(tree)
-        save_tree(tree)
-        return filename
+        tree_path = save_tree(tree, existing_path)
+        rel_path = tree_path.relative_to(vault_dir)
+        is_new = tree.root.id in new_tree_ids
+        return (str(rel_path), is_new)
 
     all_trees_to_save = list(new_trees.values())
     all_trees_to_save.extend(
@@ -128,14 +135,13 @@ def _ingest_posts(client, args, post_ids: list[str], endpoint: str | None) -> No
             executor.submit(save_tree_with_ref, tree) for tree in all_trees_to_save
         ]
         for f in futures:
-            f.result()
-
-    for tree in new_trees.values():
-        created.append(get_output_filename(tree))
-
-    for tree in cached_trees.values():
-        if tree.root.id in updated_tree_ids:
-            updated.append(get_output_filename(tree))
+            result = f.result()
+            if result:
+                path, is_new = result
+                if is_new:
+                    created.append(path)
+                else:
+                    updated.append(path)
 
     posts_added = len(target_ids) + len(related_ids)
     files_created = len(created)
@@ -147,8 +153,8 @@ def _ingest_posts(client, args, post_ids: list[str], endpoint: str | None) -> No
         target_ids_returned,
         related_ids,
         posts_added,
-        files_created,
-        files_updated,
+        created,
+        updated,
         warnings,
     )
 
@@ -180,23 +186,31 @@ def _build_log_data(
     target_ids_returned: list[str],
     related_ids_returned: list[str],
     posts_added: int,
-    files_created: int,
-    files_updated: int,
+    files_created: list[str],
+    files_updated: list[str],
     warnings: list[str] | None = None,
 ) -> dict:
-    if endpoint and endpoint in X_ENDPOINTS:
-        command_parts = [f"cobrain sources --ingest x --{endpoint}"]
-        if args.new:
-            command_parts.append("--new")
-        if args.since_id:
-            command_parts.append(f"--since-id {args.since_id}")
-        if args.until_id:
-            command_parts.append(f"--until-id {args.until_id}")
-        if args.count:
-            command_parts.append(f"--count {args.count}")
-        command = " ".join(command_parts)
-    else:
-        command = f"cobrain sources --ingest x --ids {args.ids}"
+    command_parts = ["brn", "sources", "--ingest", args.ingest]
+
+    if args.ids:
+        command_parts.extend(["--ids", args.ids])
+    elif args.own:
+        command_parts.append("--own")
+    elif args.likes:
+        command_parts.append("--likes")
+    elif args.bookmarks:
+        command_parts.append("--bookmarks")
+
+    if args.new:
+        command_parts.append("--new")
+    if args.since_id:
+        command_parts.extend(["--since-id", args.since_id])
+    if args.until_id:
+        command_parts.extend(["--until-id", args.until_id])
+    if args.count is not None:
+        command_parts.extend(["--count", str(args.count)])
+
+    command = " ".join(command_parts)
 
     log_data = {
         "created_at": datetime.utcnow().strftime("%Y%m%dT%H%M%S"),

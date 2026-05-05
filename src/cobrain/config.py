@@ -3,23 +3,46 @@ from pathlib import Path
 
 from cobrain.templates import AGENTS_TOPIC_CONTENT
 
-CONFIG_DIR = Path(
-    os.environ.get("COBRAIN_CONFIG_DIR", Path.home() / ".config" / "cobrain")
-)
-CONFIG_FILE = CONFIG_DIR / "config"
-DEFAULT_VAULT_DIR = Path.cwd()
+
+def _find_vault_dir(start: Path | None = None) -> Path | None:
+    if start is None:
+        start = Path.cwd().resolve()
+    home = Path.home()
+    for path in [start] + list(start.parents):
+        if path == home:
+            break
+        config_path = path / ".cobrain" / "config"
+        if config_path.exists():
+            return path
+    return None
+
+
+def _get_vault_dir() -> Path:
+    vault = _find_vault_dir()
+    if vault is None:
+        raise RuntimeError(
+            "No vault found. Run `brn init` in your vault directory first."
+        )
+    return vault
+
+
+def _config_path() -> Path:
+    vault = _get_vault_dir()
+    return vault / ".cobrain" / "config"
 
 
 def ensure_config_dir() -> None:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    vault = _get_vault_dir()
+    cobrain_dir = vault / ".cobrain"
+    cobrain_dir.mkdir(parents=True, exist_ok=True)
 
 
 def load_config() -> dict[str, str]:
-    ensure_config_dir()
-    if not CONFIG_FILE.exists():
+    path = _config_path()
+    if not path.exists():
         return {}
     config = {}
-    for line in CONFIG_FILE.read_text().splitlines():
+    for line in path.read_text().splitlines():
         line = line.strip()
         if "=" in line:
             key, value = line.split("=", 1)
@@ -31,22 +54,9 @@ def load_config() -> dict[str, str]:
 
 def save_config(config: dict[str, str]) -> None:
     ensure_config_dir()
+    path = _config_path()
     lines = [f"{k}={v}" for k, v in config.items()]
-    CONFIG_FILE.write_text("\n".join(lines) + "\n")
-
-
-def get_vault_dir() -> Path | None:
-    _ensure_config_key("vault_dir", "")
-    config = load_config()
-    if not config.get("vault_dir"):
-        return None
-    return Path(config["vault_dir"])
-
-
-def set_vault_dir(vault_dir: Path) -> None:
-    config = load_config()
-    config["vault_dir"] = str(vault_dir)
-    save_config(config)
+    path.write_text("\n".join(lines) + "\n")
 
 
 def _ensure_config_key(key: str, default: str) -> str:
@@ -105,17 +115,31 @@ def set_x_config(
 def init_vault(vault_path: Path) -> None:
     vault_path = vault_path.resolve()
 
-    vault_path.mkdir(parents=True, exist_ok=True)
-    (vault_path / "topics").mkdir(parents=True, exist_ok=True)
+    # Check if inside an existing vault (nested case)
+    existing = _find_vault_dir(vault_path)
+    if existing and existing != vault_path:
+        raise ValueError(f"Already inside vault at {existing}.")
+
+    # Re-init case - config exists, just ensure directories
+    if (vault_path / ".cobrain" / "config").exists():
+        (vault_path / ".cobrain").mkdir(parents=True, exist_ok=True)
+        (vault_path / "sources/chats").mkdir(parents=True, exist_ok=True)
+        (vault_path / "sources/x").mkdir(parents=True, exist_ok=True)
+        agents_path = vault_path / "topics/AGENTS.md"
+        if not agents_path.exists():
+            agents_path.parent.mkdir(parents=True, exist_ok=True)
+            agents_path.write_text(AGENTS_TOPIC_CONTENT)
+        return
+
+    # Fresh init
+    (vault_path / ".cobrain").mkdir(parents=True, exist_ok=True)
     (vault_path / "sources/chats").mkdir(parents=True, exist_ok=True)
     (vault_path / "sources/x").mkdir(parents=True, exist_ok=True)
 
-    _ensure_config_key("vault_dir", str(vault_path))
-    _ensure_config_key("x_oauth2_client_id", "")
-    _ensure_config_key("x_oauth2_client_secret", "")
+    config_path = vault_path / ".cobrain" / "config"
+    config_path.write_text("x_oauth2_client_id=\nx_oauth2_client_secret=\n")
 
     agents_path = vault_path / "topics/AGENTS.md"
     if not agents_path.exists():
+        agents_path.parent.mkdir(parents=True, exist_ok=True)
         agents_path.write_text(AGENTS_TOPIC_CONTENT)
-
-    set_vault_dir(vault_path)

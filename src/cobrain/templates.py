@@ -42,11 +42,11 @@ vault.yaml (in .cobrain/) is a derived snapshot for most CLI operations.
 
 ```bash
 brn version                        # show version
-brn vault --dir <path>             # initialize new/existing vault, write config
+brn init                           # initialize vault in current directory
 brn sync [--warnings]              # build graph from files + show warnings
 brn show                           # build and open vault.html in browser
 brn vault [--ids <ids>] [--minimal | --full | --full+] [--flow | --block]  # get graph as YAML (select ids, topic metadata fields, YAML format)
-brn vault --ids <ids> --set field=value...   # update topic frontmatter + sync
+brn vault --ids <ids> --set field=value...  # update topic frontmatter + sync
 brn vault --from <id> [--depth N]  # subtree
 brn vault --from <id> --to <id2>   # shortest path (parent links only)
 brn sources [--warnings]           # view source stats + warnings
@@ -68,4 +68,8 @@ Example: Unrelated themes should exist as independent (disconnected) topic subtr
 
 Document custom rules learned over time that affect vault management here.
 Example: "From X, only ingest --bookmarks and --ids. Owner never intends likes or own posts as sources for the vault."
+
+## Unfinished work
+Note unfinished work for the next agent/session.
+Example: "Process `sources/x/pending/` into topics."
 """

@@ -43,10 +43,6 @@ def _project_fields(topics: list[dict], fields: frozenset | None) -> list[dict]:
 
 
 def cmd_vault(args: argparse.Namespace) -> None:
-    if args.vault_dir:
-        _handle_vault_dir(args.vault_dir)
-        return
-
     if args.to_topic and not args.from_topic:
         print("ERROR: --to requires --from", file=sys.stderr)
         sys.exit(1)
@@ -64,19 +60,6 @@ def cmd_vault(args: argparse.Namespace) -> None:
         return
 
     _handle_list(args)
-
-
-def _handle_vault_dir(vault_dir) -> None:
-    from cobrain.config import init_vault
-    from pathlib import Path
-
-    vault_path = Path(vault_dir).expanduser().resolve()
-    try:
-        init_vault(vault_path)
-        print(f"Vault ready at: {vault_path}")
-    except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
 
 
 def _handle_set(args: argparse.Namespace) -> None:

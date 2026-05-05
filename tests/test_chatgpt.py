@@ -1,8 +1,9 @@
 import unittest
-import tempfile
 import json
 import os
 from pathlib import Path
+
+from tests.base import TestCase, TEST_VAULT
 
 
 class TestContentTypes(unittest.TestCase):
@@ -576,7 +577,7 @@ class TestMarkdown(unittest.TestCase):
         self.assertEqual(self.word_count(conv2), 4)
 
 
-class TestLoad(unittest.TestCase):
+class TestLoad(TestCase):
     def test_load_multiple_conversations(self):
         from cobrain.parsers.chatgpt import load_conversations
 
@@ -584,6 +585,8 @@ class TestLoad(unittest.TestCase):
             {"conversation_id": "1", "title": "A", "create_time": 1.0, "mapping": {}},
             {"conversation_id": "2", "title": "B", "create_time": 2.0, "mapping": {}},
         ]
+        import tempfile
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             temp_path = f.name
@@ -594,6 +597,27 @@ class TestLoad(unittest.TestCase):
             self.assertEqual(result[1]["conversation_id"], "2")
         finally:
             os.unlink(temp_path)
+
+    def test_get_existing_file_in_subdir(self):
+        from cobrain.parsers.chatgpt.utils import get_existing_file_for_conversation
+
+        conv_id = "subdir_conv_123"
+        content = f"""---
+id: {conv_id}
+title: Test
+---
+# Body
+"""
+        junk_dir = TEST_VAULT / "sources" / "chats" / "junk"
+        file_path = junk_dir / "test.md"
+        file_path.write_text(content)
+
+        chats_dir = TEST_VAULT / "sources" / "chats"
+        found = get_existing_file_for_conversation(chats_dir, conv_id)
+        self.assertIsNotNone(found)
+        self.assertIn("junk", str(found))
+        assert found is not None
+        self.assertEqual(found.name, "test.md")
 
 
 if __name__ == "__main__":
