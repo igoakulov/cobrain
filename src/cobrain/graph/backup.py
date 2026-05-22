@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cobrain.directories import (
     get_backups_dir,
-    get_vault_graph_path,
     get_categories_path,
+    get_vault_graph_path,
 )
 
 DEFAULT_RETENTION = 20
@@ -25,7 +25,7 @@ def create_backup() -> Path:
     backups_dir = get_backups_dir()
     backups_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%S")
     backup_path = backups_dir / f"vault_backup_{timestamp}.yaml"
 
     vault_graph_path = get_vault_graph_path()

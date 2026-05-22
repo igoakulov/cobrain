@@ -1,18 +1,32 @@
 """Tests for X ingest functionality."""
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from tests.base import TestCase, TEST_VAULT
+from cobrain.cli.ingest.x.parse import _parse_post_args
+from cobrain.parsers.x import (
+    POST_TYPE_BOOKMARKED,
+    POST_TYPE_IDS,
+    POST_TYPE_LIKED,
+    POST_TYPE_OWN,
+    POST_TYPE_RELATED,
+    SEMANTIC_TYPE_POST,
+    SEMANTIC_TYPE_QUOTE,
+    SEMANTIC_TYPE_REPLY,
+    SEMANTIC_TYPE_REPOST,
+    XPost,
+    XTree,
+    XTreeNode,
+    arrange_into_tree,
+    expand_and_merge_trees,
+    save_tree,
+)
+from cobrain.parsers.x.auth import OAuth2TokenManager
+from cobrain.parsers.x.helpers import DEFAULT_PAGE_SIZE, calculate_page_size
+from tests.base import TEST_VAULT, TestCase
 
 
 class TestPostIdExtraction(TestCase):
-    def setUp(self):
-        super().setUp()
-        from cobrain.cli.ingest.x.parse import _parse_post_args
-
-        self.parse = _parse_post_args
-
     def test_formats(self):
         cases = [
             ("1234567890", "1234567890"),
@@ -22,7 +36,7 @@ class TestPostIdExtraction(TestCase):
         ]
         for inp, expected in cases:
             with self.subTest(inp=inp):
-                result = self.parse(inp)
+                result = _parse_post_args(inp)
                 if isinstance(expected, list):
                     self.assertEqual(result, expected)
                 else:
@@ -31,8 +45,6 @@ class TestPostIdExtraction(TestCase):
 
 class TestTreeBuild(TestCase):
     def test_chain_to_tree(self):
-        from cobrain.parsers.x import XPost, arrange_into_tree
-
         posts = [
             XPost(
                 id="child456",
@@ -68,8 +80,6 @@ class TestTreeBuild(TestCase):
 
 class TestTreeMergeInMemory(TestCase):
     def test_overlap_merge(self):
-        from cobrain.parsers.x import XTree, XTreeNode, expand_and_merge_trees
-
         tree1_root = XTreeNode(
             id="shared123",
             author="alice",
@@ -115,13 +125,6 @@ class TestTreeMergeInMemory(TestCase):
 
 class TestCacheFirstExpansion(TestCase):
     def test_skip_if_cached(self):
-        from cobrain.parsers.x import (
-            XTree,
-            XTreeNode,
-            expand_and_merge_trees,
-            save_tree,
-        )
-
         cached_root = XTreeNode(
             id="cached123",
             author="alice",
@@ -171,8 +174,6 @@ class TestCacheFirstExpansion(TestCase):
 
 class TestPaginationAndBatching(TestCase):
     def test_page_size(self):
-        from cobrain.parsers.x.helpers import calculate_page_size, DEFAULT_PAGE_SIZE
-
         self.assertEqual(calculate_page_size(0), DEFAULT_PAGE_SIZE)
         self.assertEqual(calculate_page_size(100), 100)
         self.assertGreaterEqual(calculate_page_size(10), 10)
@@ -199,8 +200,6 @@ class TestOAuthTokenExchange(TestCase):
     @patch("cobrain.parsers.x.auth.set_x_config")
     @patch("xdk.oauth2_auth.OAuth2PKCEAuth")
     def test_exchange_without_api(self, mock_auth_class, mock_set_config):
-        from cobrain.parsers.x.auth import OAuth2TokenManager
-
         mock_auth = MagicMock()
         mock_auth.code_verifier = "test_verifier"
         mock_auth_class.return_value = mock_auth
@@ -223,18 +222,6 @@ class TestOAuthTokenExchange(TestCase):
 
 class TestConstants(TestCase):
     def test_types(self):
-        from cobrain.parsers.x import (
-            POST_TYPE_IDS,
-            POST_TYPE_OWN,
-            POST_TYPE_LIKED,
-            POST_TYPE_BOOKMARKED,
-            POST_TYPE_RELATED,
-            SEMANTIC_TYPE_POST,
-            SEMANTIC_TYPE_REPLY,
-            SEMANTIC_TYPE_QUOTE,
-            SEMANTIC_TYPE_REPOST,
-        )
-
         self.assertEqual(POST_TYPE_IDS, "ids")
         self.assertEqual(POST_TYPE_OWN, "own")
         self.assertEqual(POST_TYPE_LIKED, "liked")

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from cobrain.templates import AGENTS_TOPIC_CONTENT
+from cobrain.templates import AGENTS_CONTENT
 
 
 def _find_vault_dir(start: Path | None = None) -> Path | None:
@@ -21,7 +21,7 @@ def _get_vault_dir() -> Path:
     vault = _find_vault_dir()
     if vault is None:
         raise RuntimeError(
-            "No vault found. Run `brn init` in your vault directory first."
+            "No vault found. Run `brn init` in your vault directory first.",
         )
     return vault
 
@@ -80,7 +80,7 @@ def get_x_config() -> dict[str, str]:
     return {
         "x_oauth2_client_id": resolve_env_value(config.get("x_oauth2_client_id", "")),
         "x_oauth2_client_secret": resolve_env_value(
-            config.get("x_oauth2_client_secret", "")
+            config.get("x_oauth2_client_secret", ""),
         ),
         "x_oauth2_access_token": config.get("x_oauth2_access_token") or "",
         "x_oauth2_refresh_token": config.get("x_oauth2_refresh_token") or "",
@@ -123,23 +123,23 @@ def init_vault(vault_path: Path) -> None:
     # Re-init case - config exists, just ensure directories
     if (vault_path / ".cobrain" / "config").exists():
         (vault_path / ".cobrain").mkdir(parents=True, exist_ok=True)
+        (vault_path / "topics").mkdir(parents=True, exist_ok=True)
         (vault_path / "sources/chats").mkdir(parents=True, exist_ok=True)
         (vault_path / "sources/x").mkdir(parents=True, exist_ok=True)
-        agents_path = vault_path / "topics/AGENTS.md"
+        agents_path = vault_path / "AGENTS.md"
         if not agents_path.exists():
-            agents_path.parent.mkdir(parents=True, exist_ok=True)
-            agents_path.write_text(AGENTS_TOPIC_CONTENT)
+            agents_path.write_text(AGENTS_CONTENT)
         return
 
     # Fresh init
     (vault_path / ".cobrain").mkdir(parents=True, exist_ok=True)
+    (vault_path / "topics").mkdir(parents=True, exist_ok=True)
     (vault_path / "sources/chats").mkdir(parents=True, exist_ok=True)
     (vault_path / "sources/x").mkdir(parents=True, exist_ok=True)
 
     config_path = vault_path / ".cobrain" / "config"
     config_path.write_text("x_oauth2_client_id=\nx_oauth2_client_secret=\n")
 
-    agents_path = vault_path / "topics/AGENTS.md"
+    agents_path = vault_path / "AGENTS.md"
     if not agents_path.exists():
-        agents_path.parent.mkdir(parents=True, exist_ok=True)
-        agents_path.write_text(AGENTS_TOPIC_CONTENT)
+        agents_path.write_text(AGENTS_CONTENT)

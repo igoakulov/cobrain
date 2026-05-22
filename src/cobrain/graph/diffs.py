@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from cobrain.yaml_utils import write_yaml, read_yaml
+from cobrain.directories import get_diffs_dir
+from cobrain.yaml_utils import read_yaml, write_yaml
 
 
 @dataclass
@@ -12,7 +13,7 @@ class Diff:
     topics_deleted: list[str] = field(default_factory=list)
     topics_metadata_changed: dict[str, dict[str, dict]] = field(default_factory=dict)
     topics_content_changed: dict[str, dict[str, int | str]] = field(
-        default_factory=dict
+        default_factory=dict,
     )
     connections_added: list[dict] = field(default_factory=list)
     connections_deleted: list[dict] = field(default_factory=list)
@@ -68,7 +69,7 @@ def compute_diff(
     old_graph: dict | None,
     new_graph: dict,
 ) -> Diff:
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%S")
     old_topics = {
         t["id"]: t for t in (old_graph.get("topics", []) if old_graph else [])
     }
@@ -106,7 +107,7 @@ def compute_diff(
                                     "source": topic_id,
                                     "target": old_val,
                                     "type": "parent",
-                                }
+                                },
                             )
                         if new_val:
                             connections_added.append(
@@ -114,18 +115,18 @@ def compute_diff(
                                     "source": topic_id,
                                     "target": new_val,
                                     "type": "parent",
-                                }
+                                },
                             )
                     elif key == "related":
                         old_related = set(old_val or [])
                         new_related = set(new_val or [])
                         for r in old_related - new_related:
                             connections_deleted.append(
-                                {"source": topic_id, "target": r, "type": "related"}
+                                {"source": topic_id, "target": r, "type": "related"},
                             )
                         for r in new_related - old_related:
                             connections_added.append(
-                                {"source": topic_id, "target": r, "type": "related"}
+                                {"source": topic_id, "target": r, "type": "related"},
                             )
             if changed:
                 topics_metadata_changed[topic_id] = changed
@@ -149,11 +150,11 @@ def compute_diff(
                         "source": topic_id,
                         "target": old_topic["parent"],
                         "type": "parent",
-                    }
+                    },
                 )
             for r in old_topic.get("related", []):
                 connections_deleted.append(
-                    {"source": topic_id, "target": r, "type": "related"}
+                    {"source": topic_id, "target": r, "type": "related"},
                 )
 
     return Diff(
@@ -168,8 +169,6 @@ def compute_diff(
 
 
 def save_diff(diff: Diff) -> Path:
-    from cobrain.directories import get_diffs_dir
-
     diffs_dir = get_diffs_dir()
     diffs_dir.mkdir(parents=True, exist_ok=True)
     diff_path = diffs_dir / f"diff_{diff.timestamp}.yaml"
@@ -178,8 +177,6 @@ def save_diff(diff: Diff) -> Path:
 
 
 def load_diffs() -> list[Diff]:
-    from cobrain.directories import get_diffs_dir
-
     diffs_dir = get_diffs_dir()
     if not diffs_dir.exists():
         return []

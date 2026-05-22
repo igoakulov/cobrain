@@ -153,6 +153,14 @@ uv run pyright src/ tests/
 - Mock filesystem operations
 - One assertion per test
 - Descriptive names: `test_meta_get_returns_frontmatter`
+- Tests may or may not always be source of truth. If unclear from known context, ask human before assuming tests are correct.
+
+---
+
+## Git Operations
+
+- **Never use `git checkout`** (to reset files) without explicit human permission.
+- This prevents accidental loss of uncommitted work.
 
 ---
 

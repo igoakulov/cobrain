@@ -1,21 +1,13 @@
-AGENTS_TOPIC_CONTENT = """---
-id: AGENTS
-title: Cobrain Guide For Agents
-aliases: cobrain,brn,claude,guide,tutorial,rules,preferences
-created_at:
-updated_at:
-category:
-parent:
-related: []
-sources:
----
-# Cobrain Guide For Agents
+AGENTS_CONTENT = """# Cobrain Guide For Agents
 
 Cobrain CLI helps AI agents gather, organize and visualize owner's knowledge in a local vault: files (topics, sources) + graph (structured metadata).
 
 - Vault locally stores and organizes knowledge, tracks learning, and creates persistent shared context between owner/user/agent for collaboration and decisions
 - Agent manages vault autonomously
 - Cobrain CLI performs deterministic tasks and helps AI agent perform vault-related tasks reliably and token-efficiently
+
+Repo: https://github.com/igoakulov/cobrain/
+Agent skill: https://github.com/igoakulov/cobrain/blob/main/skills/cobrain-vault/SKILL.md
 
 ## Agent Responsibilities
 

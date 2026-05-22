@@ -1,3 +1,4 @@
+from cobrain.directories import get_categories_path
 from cobrain.models import Category
 from cobrain.yaml_utils import read_yaml, write_yaml
 
@@ -25,8 +26,6 @@ PALETTE = [
 
 
 def save_categories(categories: list[Category]) -> None:
-    from cobrain.directories import get_categories_path
-
     path = get_categories_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {"categories": [c.to_dict() for c in categories]}
@@ -34,8 +33,6 @@ def save_categories(categories: list[Category]) -> None:
 
 
 def load_categories() -> list[Category]:
-    from cobrain.directories import get_categories_path
-
     path = get_categories_path()
     if not path.exists():
         return []

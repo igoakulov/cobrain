@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from cobrain.models import Topic, Category
+from cobrain.models import Category, Topic
 
 
 @dataclass

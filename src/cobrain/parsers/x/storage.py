@@ -30,7 +30,7 @@ def load_all_cached_trees() -> list[XTree]:
                 created_at=data.get("created_at", ""),
                 updated_at=data.get("conversation_updated_at", ""),
                 conversation_xurl=data.get("conversation_xurl", ""),
-            )
+            ),
         )
 
     return cached_trees

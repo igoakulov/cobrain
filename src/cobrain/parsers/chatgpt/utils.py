@@ -3,14 +3,14 @@ from datetime import datetime
 from pathlib import Path
 
 from cobrain.parsers.chatgpt.models import Conversation
+from cobrain.yaml_utils import read_yaml_list
 
 
-def slugify_title(title: str) -> str:
-    slug = title.lower()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[-\s]+", "-", slug)
-    slug = slug.strip("-")
-    return slug
+def trim_url(url: str) -> str:
+    url = re.sub(r"[?&]utm_source=[^&]*", "", url)
+    url = re.sub(r"#:~:.*", "", url)
+    url = url.rstrip(")")
+    return url
 
 
 def compute_word_count(conv: Conversation) -> int:
@@ -20,14 +20,11 @@ def compute_word_count(conv: Conversation) -> int:
     return count
 
 
-def get_last_message_id(conv: Conversation) -> str:
-    if conv.messages:
-        return conv.messages[-1].id
-    return ""
-
-
 def get_output_filename(conv: Conversation) -> str:
-    slug = slugify_title(conv.title)
+    slug = conv.title.lower()
+    slug = re.sub(r"[^\w\s-]", "", slug)
+    slug = re.sub(r"[-\s]+", "-", slug)
+    slug = slug.strip("-")
     dt = datetime.fromtimestamp(conv.create_time).strftime("%Y-%m-%dT%H-%M-%S")
     return f"{slug}_{dt}.md"
 
@@ -47,7 +44,8 @@ def get_existing_last_message_id(file_path: Path) -> str | None:
 
 
 def get_existing_file_for_conversation(
-    chats_dir: Path, conversation_id: str
+    chats_dir: Path,
+    conversation_id: str,
 ) -> Path | None:
     if not chats_dir.exists():
         return None
@@ -68,8 +66,6 @@ def get_stem_from_filename(filename: str) -> str:
 
 
 def get_log_entries(logs_dir: Path) -> list[dict]:
-    from cobrain.yaml_utils import read_yaml_list
-
     entries = {}
     if not logs_dir.exists():
         return []

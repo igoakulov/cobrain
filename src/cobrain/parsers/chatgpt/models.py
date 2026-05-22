@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-
 INCLUDE_CONTENT_TYPES = {
     "text",
     "execution_output",
@@ -30,8 +29,7 @@ class MessageNode:
     timestamp: str
     content_type: str
     language: str = ""
-    branch_depth: int = 0
-    is_tool_invocation: bool = False
+    deep_research_report: str | None = None
 
 
 @dataclass
@@ -40,7 +38,7 @@ class Conversation:
     title: str
     create_time: float
     messages: list[MessageNode] = field(default_factory=list)
-    sources: list[str] = field(default_factory=list)
+    citations: dict[int, str] = field(default_factory=dict)
 
 
 @dataclass

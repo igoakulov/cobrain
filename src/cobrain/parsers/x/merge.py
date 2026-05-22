@@ -1,11 +1,13 @@
+import cobrain.parsers.x.tree as tree_module
+from cobrain.parsers.x.client import get_x_client
 from cobrain.parsers.x.models import (
     XTree,
     XTreeNode,
 )
 from cobrain.parsers.x.tree import (
+    _find_node_by_id,
     _find_tree_containing,
     _iter_all_nodes,
-    _find_node_by_id,
     _post_to_node,
 )
 
@@ -15,8 +17,6 @@ def expand_and_merge_trees(
     cached_trees: dict[str, XTree],
     updated_tree_ids: set[str] | None = None,
 ) -> list[str]:
-    from cobrain.parsers.x.client import get_x_client
-
     client = get_x_client()
     related_ids: list[str] = []
     target_tree_ids = set(new_trees.keys())
@@ -99,8 +99,6 @@ def expand_and_merge_trees(
 
         _merge_by_overlap(new_trees, new_trees, updated_tree_ids)
         _merge_by_overlap(new_trees, cached_trees, updated_tree_ids)
-
-        import cobrain.parsers.x.tree as tree_module
 
         tree_module._post_id_index = None
 

@@ -1,28 +1,28 @@
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import UTC, datetime
 
-from cobrain.parsers.x import (
-    XPost,
-    XTree,
-    get_existing_post_ids,
-    get_x_trees_dir,
-    load_all_cached_trees,
-    save_tree,
-    expand_and_merge_trees,
-    arrange_into_tree,
-    sort_tree_by_time,
-    _find_tree_containing,
-    find_tree_file_by_id,
-    POST_TYPE_IDS,
-    POST_TYPE_OWN,
-    POST_TYPE_LIKED,
-    POST_TYPE_BOOKMARKED,
-)
 from cobrain.config import _get_vault_dir as _get_vault_dir
 from cobrain.directories import (
     get_x_log_path,
     get_x_logs_dir,
+)
+from cobrain.parsers.x import (
+    POST_TYPE_BOOKMARKED,
+    POST_TYPE_IDS,
+    POST_TYPE_LIKED,
+    POST_TYPE_OWN,
+    XPost,
+    XTree,
+    _find_tree_containing,
+    arrange_into_tree,
+    expand_and_merge_trees,
+    find_tree_file_by_id,
+    get_existing_post_ids,
+    get_x_trees_dir,
+    load_all_cached_trees,
+    save_tree,
+    sort_tree_by_time,
 )
 from cobrain.yaml_utils import write_yaml
 
@@ -110,7 +110,7 @@ def _ingest_posts(client, args, post_ids: list[str], endpoint: str | None) -> No
 
     created = []
     updated = []
-    ingest_timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+    ingest_timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     warnings: list[str] = []
     vault_dir = _get_vault_dir()
 
@@ -127,7 +127,7 @@ def _ingest_posts(client, args, post_ids: list[str], endpoint: str | None) -> No
 
     all_trees_to_save = list(new_trees.values())
     all_trees_to_save.extend(
-        [t for t in cached_trees.values() if t.root.id in updated_tree_ids]
+        [t for t in cached_trees.values() if t.root.id in updated_tree_ids],
     )
 
     with ThreadPoolExecutor(max_workers=10) as executor:
@@ -213,7 +213,7 @@ def _build_log_data(
     command = " ".join(command_parts)
 
     log_data = {
-        "created_at": datetime.utcnow().strftime("%Y%m%dT%H%M%S"),
+        "created_at": datetime.now(UTC).strftime("%Y%m%dT%H%M%S"),
         "command": command,
         "target_ids_returned": (
             f"[{','.join(sorted(target_ids_returned))}]"

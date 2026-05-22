@@ -1,13 +1,15 @@
 import argparse
 import signal
 import sys
+from pathlib import Path
 
 from cobrain import __version__
+from cobrain.config import init_vault
 
-from .vault import cmd_backup, cmd_vault
 from .show import cmd_show
 from .sources import cmd_sources
 from .sync import cmd_sync
+from .vault import cmd_backup, cmd_vault
 
 
 def cmd_version(args: argparse.Namespace) -> None:
@@ -15,9 +17,6 @@ def cmd_version(args: argparse.Namespace) -> None:
 
 
 def cmd_init(args: argparse.Namespace) -> None:
-    from cobrain.config import init_vault
-    from pathlib import Path
-
     vault_path = Path.cwd().resolve()
     try:
         init_vault(vault_path)
@@ -46,7 +45,8 @@ def main() -> None:
     version_parser.set_defaults(func=cmd_version)
 
     init_parser = subparsers.add_parser(
-        "init", help="Initialize vault in current directory"
+        "init",
+        help="Initialize vault in current directory",
     )
     init_parser.set_defaults(func=cmd_init)
 
@@ -57,7 +57,9 @@ def main() -> None:
     vault_parser = subparsers.add_parser("vault", help="List or update topics")
 
     vault_parser.add_argument(
-        "--set", nargs="+", help="Set metadata for --ids (also syncs)"
+        "--set",
+        nargs="+",
+        help="Set metadata for --ids (also syncs)",
     )
 
     traversal_group = vault_parser.add_argument_group("Discovery")
@@ -92,7 +94,9 @@ def main() -> None:
         help="Flow style (default, compact)",
     )
     format_group.add_argument(
-        "--block", action="store_true", help="Block style (human-readable)"
+        "--block",
+        action="store_true",
+        help="Block style (human-readable)",
     )
 
     vault_parser.set_defaults(func=cmd_vault)
@@ -114,19 +118,26 @@ def main() -> None:
         help="Ingest source (e.g., chatgpt, x)",
     )
     chatgpt_group.add_argument(
-        "--paths", nargs="+", help="Path(s) to conversations.json files"
+        "--paths",
+        nargs="+",
+        help="Path(s) to conversations.json files",
     )
     chatgpt_group.add_argument(
-        "--since", dest="since_datetime", help="Start datetime (ISO 8601, inclusive)"
+        "--since",
+        dest="since_datetime",
+        help="Start datetime (ISO 8601, inclusive)",
     )
     chatgpt_group.add_argument(
-        "--until", dest="until_datetime", help="End datetime (ISO 8601, inclusive)"
+        "--until",
+        dest="until_datetime",
+        help="End datetime (ISO 8601, inclusive)",
     )
     chatgpt_group.add_argument("--titles", help="Filter by titles (comma-separated)")
 
     x_endpoints_group = sources_parser.add_argument_group("X endpoints")
     x_endpoints_group.add_argument(
-        "--ids", help="Comma-separated post IDs, URLs, or xurls"
+        "--ids",
+        help="Comma-separated post IDs, URLs, or xurls",
     )
     x_endpoints_group.add_argument(
         "--own",
@@ -134,10 +145,14 @@ def main() -> None:
         help="Ingest own posts",
     )
     x_endpoints_group.add_argument(
-        "--likes", action="store_true", help="Ingest liked posts"
+        "--likes",
+        action="store_true",
+        help="Ingest liked posts",
     )
     x_endpoints_group.add_argument(
-        "--bookmarks", action="store_true", help="Ingest bookmarked posts"
+        "--bookmarks",
+        action="store_true",
+        help="Ingest bookmarked posts",
     )
 
     x_filters_group = sources_parser.add_argument_group("X filters")

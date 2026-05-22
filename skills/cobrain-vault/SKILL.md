@@ -29,12 +29,13 @@ Multiple vaults (per project, personal/work) supported with distinct vault-local
 
 ```
 vault/
-├── vault.html            # standalone shareable page with search/filters for human user
 ├── topics/               # topic files (.md), source of truth for CLI
 ├── sources/
 │   ├── chats/            # ChatGPT conversations (.md)
 │   ├── x/                # X conversations (.yaml)
 │   └── ...               # add more for other sources
+├── vault.html            # standalone shareable page with search/filters for human user
+├── AGENTS.md             # custom instructions and persistent notes for agent
 └── .cobrain/             # app internals, read but never edit directly
     ├── config            # used to detect vault
     ├── vault.yaml        # derived graph of topics, with metadata
@@ -66,14 +67,14 @@ Metrics:
 - Topics easy to find by id/aliases/title/keywords in body
 - 0 warnings in sync and sources
 - Backups before meaningful graph changes
-- Custom vault management instructions (learnings, user preferences) are actively updated and followed each session in `topics/AGENTS.md` or equivalent
+- Custom vault management instructions (learnings, user preferences) are actively updated and followed each session in `vault/AGENTS.md` or equivalent
 
 ---
 
 ## Tasks
 
 Typical session order:
-1. Read this skill + custom instructions in `topics/AGENTS.md` or equivalent
+1. Read this skill + custom instructions in `vault/AGENTS.md` or equivalent
 2. Ensure good current state:
    - Sync `brn sync --warnings` + fix warnings
    - Inspect graph `brn vault ...`
@@ -84,7 +85,7 @@ Typical session order:
    - Update/create topics, bulk-manage frontmatter `brn vault --ids ... [--set ...]`
 5. Sync again + fix warnings
 6. Show state to user: `brn show`
-7. Update custom instructions in `topics/AGENTS.md` if needed
+7. Update custom instructions in `vault/AGENTS.md` if needed
 
 ### Ingest Sources
 
@@ -146,12 +147,12 @@ Read non-integrated sources (webpage, file, chat) directly and choose:
 
 #### Managing sources
 
-Organize each source with subfolders to help your workflow. Examples:
-- Move X conversations with no value to topics to `sources/x/junk/` to avoid reading (wastes tokens, pollutes context) in next agent session
-- Move ingested but unprocessed ChatGPT chats to `souces/chats/pending/` or similar, so that unfinished state isn't lost in translation between agent sessions
+Organize each source with subfolders to help your workflow:
+- After you run ingest, find list of newly added/updated sources with `ls -t sources/.../ | head -n 15` or in your `.cobrain/logs/.../`
+- Move ingested but unprocessed sources to `souces/.../pending/` or similar, so that unfinished state isn't lost in translation between agent sessions
+- Move sources with no value to topics to `sources/.../junk/` to avoid re-reading them in future
 - Find and update any old source filepath in topics frontmatter after you move the file.
-- Note unfinished work for the next agent/session in `topics/AGENTS.md` or equivalent. Example: "Process `sources/x/pending/` into topics."
-
+- Note unfinished work for the next agent/session in `vault/AGENTS.md` or equivalent. Example: "Process `sources/x/pending/` into topics."
 
 ---
 

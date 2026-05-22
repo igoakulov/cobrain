@@ -1,13 +1,13 @@
 from cobrain.parsers.x.helpers import (
     SEMANTIC_TYPE_POST,
-    SEMANTIC_TYPE_REPLY,
     SEMANTIC_TYPE_QUOTE,
+    SEMANTIC_TYPE_REPLY,
     SEMANTIC_TYPE_REPOST,
 )
 from cobrain.parsers.x.models import XPost
 from cobrain.parsers.x.transform import (
-    normalize_whitespace,
     format_article_as_text,
+    normalize_whitespace,
 )
 
 

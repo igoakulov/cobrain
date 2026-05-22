@@ -1,8 +1,7 @@
 import re
 from pathlib import Path
 
-from cobrain.directories import get_vault_graph_path, VAULT_DIR
-
+from cobrain.directories import VAULT_DIR, get_vault_graph_path
 from cobrain.graph.validation import BuildResult, CleanIssue, ValidationError
 from cobrain.topics.topic import (
     Topic,
@@ -52,7 +51,7 @@ def build_graph() -> BuildResult:
                         topic_id=topic_id,
                         filename=filename,
                         message="Metadata frontmatter cannot be parsed",
-                    )
+                    ),
                 )
 
             if "id" not in data:
@@ -61,7 +60,7 @@ def build_graph() -> BuildResult:
                         topic_id=topic_id,
                         filename=filename,
                         message="Missing topic id",
-                    )
+                    ),
                 )
 
             topic = topic_from_markdown(topic_id, content)
@@ -75,7 +74,7 @@ def build_graph() -> BuildResult:
                         topic_id=topic.id,
                         filename=filename,
                         message=f"Duplicate topic id: {topic.id}",
-                    )
+                    ),
                 )
             seen_ids.add(topic.id)
 
@@ -88,7 +87,7 @@ def build_graph() -> BuildResult:
                         filename=filename,
                         issue_type="frontmatter_position",
                         message="Frontmatter not at top",
-                    )
+                    ),
                 )
 
             if not body_has_content(body):
@@ -98,7 +97,7 @@ def build_graph() -> BuildResult:
                         filename=filename,
                         issue_type="empty_body",
                         message="Empty body",
-                    )
+                    ),
                 )
 
             if not topic.sources:
@@ -108,17 +107,17 @@ def build_graph() -> BuildResult:
                         filename=filename,
                         issue_type="no_sources",
                         message="No sources",
-                    )
+                    ),
                 )
 
-            if not topic.parent and topic.id != "AGENTS":
+            if not topic.parent:
                 clean_issues.append(
                     CleanIssue(
                         topic_id=topic.id,
                         filename=filename,
                         issue_type="no_parent",
                         message="No parent",
-                    )
+                    ),
                 )
 
         except Exception:
@@ -127,7 +126,7 @@ def build_graph() -> BuildResult:
                     topic_id=topic_id,
                     filename=filename,
                     message="Metadata frontmatter cannot be parsed",
-                )
+                ),
             )
             clean_issues.append(
                 CleanIssue(
@@ -135,7 +134,7 @@ def build_graph() -> BuildResult:
                     filename=filename,
                     issue_type="invalid_yaml",
                     message="Frontmatter parsed with issues",
-                )
+                ),
             )
 
     for topic in topics_dict.values():
@@ -146,7 +145,7 @@ def build_graph() -> BuildResult:
                     filename=filename_map.get(topic.id, f"{topic.id}.md"),
                     issue_type="orphan_parent",
                     message=f"Parent not found: {topic.parent}",
-                )
+                ),
             )
 
     topic_list = list(topics_dict.values())
@@ -193,5 +192,5 @@ def read_graph() -> BuildResult:
 
     topics = [Topic.from_dict(t) for t in data.get("topics", [])]
     return BuildResult(
-        topics=topics, categories=[], validation_errors=[], clean_issues=[]
+        topics=topics, categories=[], validation_errors=[], clean_issues=[],
     )

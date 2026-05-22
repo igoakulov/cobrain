@@ -3,28 +3,27 @@ from typing import Any
 from cobrain.parsers.x.auth import OAuth2TokenManager
 from cobrain.parsers.x.helpers import (
     DEFAULT_PAGE_SIZE,
+    POST_TYPE_BOOKMARKED,
+    POST_TYPE_IDS,
+    POST_TYPE_LIKED,
+    POST_TYPE_OWN,
     X_TWEET_FIELDS,
     X_USER_FIELDS,
-    POST_TYPE_IDS,
-    POST_TYPE_OWN,
-    POST_TYPE_LIKED,
-    POST_TYPE_BOOKMARKED,
     calculate_page_size,
     get_base_params,
 )
 from cobrain.parsers.x.models import XPost
 from cobrain.parsers.x.parse import _parse_post_data
 
-
 POST_TYPE_APIS = {
     POST_TYPE_OWN: lambda client, user_id, params: client.users.get_posts(
-        user_id, **params
+        user_id, **params,
     ),
     POST_TYPE_LIKED: lambda client, user_id, params: client.users.get_liked_posts(
-        user_id, **params
+        user_id, **params,
     ),
     POST_TYPE_BOOKMARKED: lambda client, user_id, params: client.users.get_bookmarks(
-        user_id, **params
+        user_id, **params,
     ),
 }
 
@@ -55,7 +54,7 @@ class XClient:
         return self._user_id
 
     def get_posts_by_ids(
-        self, post_ids: list[str], post_type: str = POST_TYPE_IDS
+        self, post_ids: list[str], post_type: str = POST_TYPE_IDS,
     ) -> list[XPost]:
         if not post_ids:
             return []
@@ -67,7 +66,7 @@ class XClient:
         return all_posts
 
     def _fetch_posts_by_ids_chunk(
-        self, post_ids: list[str], post_type: str
+        self, post_ids: list[str], post_type: str,
     ) -> list[XPost]:
         try:
             response = self._get_client().posts.get_by_ids(

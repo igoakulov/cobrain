@@ -1,32 +1,14 @@
-import re
-
-from cobrain.parsers.chatgpt.models import Conversation, MessageNode
 from cobrain.parsers.chatgpt.extract import (
     extract_content_with_attachments,
-    extract_urls,
+    extract_deep_research_from_call_tool,
     should_include_message,
 )
 from cobrain.parsers.chatgpt.format import format_timestamp
-from cobrain.parsers.chatgpt.transform import _clean_url, _transform_content
-
-
-def _is_tool_invocation(msg: dict) -> bool:
-    if msg.get("content", {}).get("content_type") == "code":
-        text = msg.get("content", {}).get("text", "")
-        if re.match(r"^\w+\(.+\)$", text.strip()):
-            return True
-    return False
-
-
-def _format_tool_invocation(msg: dict) -> str:
-    text = msg.get("content", {}).get("text", "")
-    match = re.match(r"^(\w+)\((.*)\)$", text.strip(), re.DOTALL)
-    if match:
-        tool_name = match.group(1)
-        args = match.group(2).strip()
-        args = args.strip('"').strip("'")
-        return f"[{tool_name}: {args}]"
-    return text
+from cobrain.parsers.chatgpt.models import Conversation, MessageNode
+from cobrain.parsers.chatgpt.transform import (
+    transform_assistant_messages,
+    transform_assistant_messages_deep_research,
+)
 
 
 def parse_conversation(conv: dict) -> Conversation:
@@ -42,20 +24,80 @@ def parse_conversation(conv: dict) -> Conversation:
             root = node_id
             break
 
+    current_node = conv.get("current_node")
+    ancestor_ids: set[str] = set()
+    node_id = current_node
+    while node_id:
+        ancestor_ids.add(node_id)
+        node = mapping.get(node_id)
+        node_id = node.get("parent") if node else None
+
+    deep_research_reports: list[tuple[str, list[dict]]] = []
+    for node in mapping.values():
+        msg = node.get("message")
+        if not msg:
+            continue
+        author_name = msg.get("author", {}).get("name", "")
+        if author_name == "api_tool.call_tool":
+            result = extract_deep_research_from_call_tool(msg)
+            if result:
+                deep_research_reports.append(result)
+
     messages: list[MessageNode] = []
-    sources: list[str] = []
+    source_refs: dict[str, int] = {}
+    citation_urls: set[str] = set()
 
     if root:
         _traverse_messages(
-            mapping, root, None, messages, sources, branch_depth=0, first_branch=True
+            mapping,
+            root,
+            None,
+            messages,
+            deep_research_reports,
+            source_refs,
+            citation_urls,
+            ancestor_ids,
         )
 
+    while deep_research_reports:
+        report_text, content_refs = deep_research_reports.pop(0)
+        for node in mapping.values():
+            msg = node.get("message")
+            if not msg:
+                continue
+            if (
+                msg.get("author", {}).get("role") == "assistant"
+                and msg.get("recipient") == "api_tool.call_tool"
+            ):
+                parts = msg.get("content", {}).get("parts", [])
+                text = parts[0] if parts else ""
+                if "/Deep Research App/" in text:
+                    content = transform_assistant_messages_deep_research(
+                        report_text, content_refs, source_refs,
+                    )
+                    create_time = msg.get("create_time") or 0
+                    messages.append(
+                        MessageNode(
+                            id=node.get("id", ""),
+                            role="assistant",
+                            content=content,
+                            timestamp=format_timestamp(create_time),
+                            content_type="text",
+                            language="",
+                            deep_research_report=report_text,
+                        ),
+                    )
+                    break
+
+    citations = {
+        num: url for url, num in sorted(source_refs.items(), key=lambda x: x[1])
+    }
     return Conversation(
         id=conv_id,
         title=title,
         create_time=create_time,
         messages=messages,
-        sources=sources,
+        citations=citations,
     )
 
 
@@ -64,9 +106,10 @@ def _traverse_messages(
     node_id: str,
     parent_id: str | None,
     messages: list[MessageNode],
-    sources: list[str],
-    branch_depth: int,
-    first_branch: bool,
+    deep_research_reports: list[tuple[str, list[dict]]],
+    source_refs: dict[str, int],
+    citation_urls: set[str],
+    ancestor_ids: set[str] | None = None,
 ) -> str | None:
     node = mapping.get(node_id)
     if not node:
@@ -75,49 +118,64 @@ def _traverse_messages(
     if node.get("parent") != parent_id:
         return None
 
-    msg = node.get("message")
+    if ancestor_ids and node_id not in ancestor_ids:
+        children = node.get("children") or []
+        for child_id in children:
+            _traverse_messages(
+                mapping,
+                child_id,
+                node_id,
+                messages,
+                deep_research_reports,
+                source_refs,
+                citation_urls,
+                ancestor_ids,
+            )
+        return None
 
-    last_msg_id = node_id
+    msg = node.get("message")
 
     if should_include_message(msg):
         content, content_type, language, attachment_names, audio_placeholder = (
             extract_content_with_attachments(msg)
         )
         create_time = msg.get("create_time") or 0
-        is_tool = _is_tool_invocation(msg)
 
-        if content or attachment_names or audio_placeholder or is_tool:
-            if is_tool:
-                final_content = _format_tool_invocation(msg)
-                message_urls = extract_urls(final_content)
-                for url in message_urls:
-                    cleaned = _clean_url(url)
-                    if cleaned not in sources:
-                        sources.append(cleaned)
-            else:
-                content = _transform_content(content, msg)
+        deep_research_refs: list[dict] | None = None
+        deep_research_raw: str | None = None
+        if (
+            msg.get("recipient") == "api_tool.call_tool"
+            and "/Deep Research App/" in content
+            and deep_research_reports
+        ):
+            report_text, deep_research_refs = deep_research_reports.pop(0)
+            deep_research_raw = report_text
+            content = report_text
 
-                message_urls = extract_urls(content)
-                for url in message_urls:
-                    cleaned = _clean_url(url)
-                    if cleaned not in sources:
-                        sources.append(cleaned)
+        if content or attachment_names or audio_placeholder:
+            role = msg.get("author", {}).get("role", "")
+            if role == "assistant":
+                if deep_research_refs is not None:
+                    content = transform_assistant_messages_deep_research(
+                        content, deep_research_refs, source_refs,
+                    )
+                else:
+                    content = transform_assistant_messages(
+                        content, msg, citation_urls, source_refs,
+                    )
 
-                _collect_search_urls(msg, sources)
-                _collect_attachment_filenames(attachment_names, sources)
+            prefix_parts: list[str] = []
+            if audio_placeholder:
+                prefix_parts.append(audio_placeholder)
+            prefix_parts.extend(attachment_names)
 
-                prefix_parts: list[str] = []
-                if audio_placeholder:
-                    prefix_parts.append(audio_placeholder)
-                prefix_parts.extend(attachment_names)
-
-                final_content = content
-                if prefix_parts:
-                    prefix = "\n".join(prefix_parts)
-                    if final_content:
-                        final_content = f"{prefix}\n\n{final_content}"
-                    else:
-                        final_content = prefix
+            final_content = content
+            if prefix_parts:
+                prefix = "\n".join(prefix_parts)
+                if final_content:
+                    final_content = f"{prefix}\n\n{final_content}"
+                else:
+                    final_content = prefix
 
             messages.append(
                 MessageNode(
@@ -127,63 +185,27 @@ def _traverse_messages(
                     timestamp=format_timestamp(create_time),
                     content_type=content_type,
                     language=language,
-                    branch_depth=branch_depth,
-                    is_tool_invocation=is_tool,
-                )
+                    deep_research_report=deep_research_raw,
+                ),
             )
 
     children = node.get("children") or []
 
-    if children:
-        first = True
-        for child_id in children:
-            child_branch_depth = branch_depth
-            if first:
-                first = False
-            else:
-                child_branch_depth = branch_depth + 1
-
-            child_last = _traverse_messages(
-                mapping, child_id, node_id, messages, sources, child_branch_depth, first
-            )
-            if child_last:
-                last_msg_id = child_last
-
-    return last_msg_id
-
-
-def _collect_search_urls(msg: dict, sources: list[str]) -> None:
-    search_groups = msg.get("metadata", {}).get("search_result_groups", [])
-    for group in search_groups:
-        for entry in group.get("entries", []):
-            url = entry.get("url", "")
-            if url:
-                url = _clean_url(url)
-                if url not in sources:
-                    sources.append(url)
-
-    content_refs = msg.get("metadata", {}).get("content_references", [])
-    for ref in content_refs:
-        ref_type = ref.get("type", "")
-        if ref_type in ("grouped_webpages", "link_title"):
-            url = ref.get("url", "")
-            if url:
-                url = _clean_url(url)
-                if url not in sources:
-                    sources.append(url)
-
-
-def _collect_attachment_filenames(
-    attachment_names: list[str], sources: list[str]
-) -> None:
-    for name in attachment_names:
-        clean_name = name.strip("[]")
-        if clean_name and clean_name not in sources:
-            sources.append(clean_name)
+    for child_id in children:
+        _traverse_messages(
+            mapping,
+            child_id,
+            node_id,
+            messages,
+            deep_research_reports,
+            source_refs,
+            citation_urls,
+            ancestor_ids,
+        )
 
 
 def parse_conversation_expand(
-    conv_data: dict, last_message_id: str | None
+    conv_data: dict, last_message_id: str | None,
 ) -> Conversation:
     conv = parse_conversation(conv_data)
 

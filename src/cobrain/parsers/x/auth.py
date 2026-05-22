@@ -1,6 +1,5 @@
 from cobrain.config import get_x_config, set_x_config
 
-
 X_OAUTH2_SCOPES = [
     "tweet.read",
     "users.read",
@@ -22,7 +21,7 @@ class OAuth2TokenManager:
         self.authorization_code = authorization_code
 
     def _save_tokens(
-        self, access_token: str, refresh_token: str, expires_in: int
+        self, access_token: str, refresh_token: str, expires_in: int,
     ) -> None:
         set_x_config(
             oauth2_access_token=access_token,
@@ -34,7 +33,7 @@ class OAuth2TokenManager:
     def get_token(self) -> str:
         if not self.client_id or not self.client_secret:
             raise RuntimeError(
-                "Set x_oauth2_client_id and x_oauth2_client_secret in vault config. Use $VAR for env vars."
+                "Set x_oauth2_client_id and x_oauth2_client_secret in vault config. Use $VAR for env vars.",
             )
 
         if self.authorization_code and not self.access_token:
@@ -68,7 +67,7 @@ class OAuth2TokenManager:
             access_token = tokens["access_token"]
             refresh_token = tokens.get("refresh_token", self.refresh_token)
             self._save_tokens(
-                access_token, refresh_token, tokens.get("expires_in", 7200)
+                access_token, refresh_token, tokens.get("expires_in", 7200),
             )
             return access_token
         except Exception as e:
@@ -116,7 +115,7 @@ class OAuth2TokenManager:
         print("1. Visit this URL and authorize:")
         print(f"{auth_url}")
         print(
-            "\n2. Copy code from redirect URL (value after ?code= and before &state=)"
+            "\n2. Copy code from redirect URL (value after ?code= and before &state=)",
         )
         print(f"Example: {X_OAUTH2_REDIRECT_URI}/?code=CODE&state=...")
         print("\n3. Repeat your command with --authorization-code CODE")

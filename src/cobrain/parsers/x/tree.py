@@ -87,7 +87,7 @@ def _build_post_id_index(trees: dict[str, XTree]) -> dict[str, tuple[XTree, XTre
 
 
 def _find_tree_containing(
-    trees: dict[str, XTree], post_id: str
+    trees: dict[str, XTree], post_id: str,
 ) -> tuple[XTree, XTreeNode] | None:
     global _post_id_index, _index_trees
 

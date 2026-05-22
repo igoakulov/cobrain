@@ -44,7 +44,7 @@ def normalize_whitespace(
                 text = text.replace(tco_url, "")
                 continue
             if expanded_url.startswith("https://x.com/") or expanded_url.startswith(
-                "http://x.com/"
+                "http://x.com/",
             ):
                 text = text.replace(tco_url, "")
             else:

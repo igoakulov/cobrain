@@ -1,32 +1,30 @@
 import argparse
 import re
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cobrain.cli.utils import _parse_iso_datetime
 from cobrain.config import _get_vault_dir as _get_vault_dir
 from cobrain.directories import (
+    get_chat_log_path,
     get_chats_dir,
     get_chats_logs_dir,
-    get_chat_log_path,
+)
+from cobrain.parsers.chatgpt import (
+    compute_word_count,
+    conversation_to_markdown,
+    filter_conversations,
+    get_existing_file_for_conversation,
+    get_existing_last_message_id,
+    get_output_filename,
+    load_conversations,
+    parse_conversation,
 )
 from cobrain.yaml_utils import write_yaml
 
 
 def cmd_ingest_chat(args: argparse.Namespace) -> None:
-    from cobrain.parsers.chatgpt import (
-        load_conversations,
-        filter_conversations,
-        parse_conversation,
-        conversation_to_markdown,
-        compute_word_count,
-        get_last_message_id,
-        get_output_filename,
-        get_existing_file_for_conversation,
-    )
-    from cobrain.parsers.chatgpt.utils import get_existing_last_message_id
-
     paths = [Path(p).expanduser().resolve() for p in args.paths]
     for path in paths:
         if not path.exists():
@@ -77,14 +75,14 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
     updated_files = []
     skipped_files = []
 
-    ingest_timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+    ingest_timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
 
     for conv_data in filtered:
         conv_id = conv_data.get("conversation_id") or conv_data.get("id", "")
 
         existing_file = get_existing_file_for_conversation(chats_dir, conv_id)
         existing_last_msg_id = None
-        created_at = datetime.utcnow().isoformat()
+        created_at = datetime.now(UTC).isoformat()
         existing_title = None
 
         if existing_file:
@@ -96,7 +94,7 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
 
         conv = parse_conversation(conv_data)
 
-        last_msg_id = get_last_message_id(conv)
+        last_msg_id = conv.messages[-1].id if conv.messages else ""
 
         if existing_last_msg_id and last_msg_id == existing_last_msg_id:
             skipped_files.append(conv_id)
@@ -113,7 +111,7 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
             rel_path = f"sources/chatgpt/{output_filename}"
             created_files.append((conv_id, last_msg_id, rel_path))
 
-        updated_at = datetime.utcnow().isoformat()
+        updated_at = datetime.now(UTC).isoformat()
         word_count = compute_word_count(conv)
         title = existing_title or conv.title
         content = conversation_to_markdown(
@@ -158,7 +156,7 @@ def cmd_ingest_chat(args: argparse.Namespace) -> None:
     total_created = len(created_files)
     total_updated = len(updated_files)
     print(
-        f"Ingest complete: {total_created} created, {total_updated} updated, {len(skipped_files)} skipped"
+        f"Ingest complete: {total_created} created, {total_updated} updated, {len(skipped_files)} skipped",
     )
 
 
@@ -187,4 +185,4 @@ def _get_created_at_from_file(file_path: Path) -> str:
             return match.group(1).strip()
     except Exception:
         pass
-    return datetime.utcnow().isoformat()
+    return datetime.now(UTC).isoformat()

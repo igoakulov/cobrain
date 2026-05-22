@@ -46,17 +46,10 @@ def _print_warnings(warnings: list) -> None:
             print(f"- {item.message}")
 
 
-def _count_connections(topics: list) -> int:
-    count = 0
-    for topic in topics:
-        if topic.parent:
-            count += 1
-        count += len(topic.related)
-    return count
-
-
 def print_sync_summary(result, show_warnings=False):
-    connection_count = _count_connections(result.topics)
+    connection_count = sum(1 if t.parent else 0 for t in result.topics) + sum(
+        len(t.related) for t in result.topics
+    )
     warning_count = len(result.clean_issues)
     summary = (
         f"Sync complete: {len(result.topics)} topics, {connection_count} connections"

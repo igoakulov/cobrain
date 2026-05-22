@@ -1,6 +1,7 @@
-from typing import Any
-import yaml
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 
 def read_yaml(path: Path) -> dict[str, Any] | None:
@@ -40,7 +41,7 @@ def write_yaml(path: Path, data: dict | list) -> None:
             allow_unicode=True,
         )
     if isinstance(data, dict) and "conversation_xurl" in data:
-        with open(path, "r") as f:
+        with open(path) as f:
             content = f.read()
         lines = content.split("\n")
         new_lines = []

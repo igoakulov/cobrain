@@ -1,7 +1,8 @@
 """Tests for diff computation: topic/connection changes, content word counts."""
 
 import unittest
-from cobrain.graph.diffs import Diff, compute_diff, _delta_str
+
+from cobrain.graph.diffs import Diff, _delta_str, compute_diff
 
 
 class TestDiffs(unittest.TestCase):
@@ -26,8 +27,8 @@ class TestDiffs(unittest.TestCase):
             (
                 {
                     "topics": [
-                        {"id": "a", "title": "A", "parent": "root", "word_count": 0}
-                    ]
+                        {"id": "a", "title": "A", "parent": "root", "word_count": 0},
+                    ],
                 },
                 {
                     "topics": [
@@ -36,8 +37,8 @@ class TestDiffs(unittest.TestCase):
                             "title": "A",
                             "parent": "newparent",
                             "word_count": 0,
-                        }
-                    ]
+                        },
+                    ],
                 },
                 "parent change",
             ),
@@ -49,8 +50,8 @@ class TestDiffs(unittest.TestCase):
                             "title": "A",
                             "related": ["x", "y"],
                             "word_count": 0,
-                        }
-                    ]
+                        },
+                    ],
                 },
                 {
                     "topics": [
@@ -59,8 +60,8 @@ class TestDiffs(unittest.TestCase):
                             "title": "A",
                             "related": ["x", "z"],
                             "word_count": 0,
-                        }
-                    ]
+                        },
+                    ],
                 },
                 "related change",
             ),
@@ -77,13 +78,13 @@ class TestDiffs(unittest.TestCase):
             (
                 {
                     "topics": [
-                        {"id": "a", "title": "A", "category": "ml", "word_count": 0}
-                    ]
+                        {"id": "a", "title": "A", "category": "ml", "word_count": 0},
+                    ],
                 },
                 {
                     "topics": [
-                        {"id": "a", "title": "A", "category": "nlp", "word_count": 0}
-                    ]
+                        {"id": "a", "title": "A", "category": "nlp", "word_count": 0},
+                    ],
                 },
                 "category change",
             ),
@@ -102,10 +103,10 @@ class TestDiffs(unittest.TestCase):
                 elif desc == "parent change":
                     self.assertIn("a", diff.topics_metadata_changed)
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["parent"]["old"], "root"
+                        diff.topics_metadata_changed["a"]["parent"]["old"], "root",
                     )
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["parent"]["new"], "newparent"
+                        diff.topics_metadata_changed["a"]["parent"]["new"], "newparent",
                     )
                     # Also check connections
                     added = [
@@ -139,10 +140,10 @@ class TestDiffs(unittest.TestCase):
                 elif desc == "category change":
                     self.assertIn("a", diff.topics_metadata_changed)
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["category"]["old"], "ml"
+                        diff.topics_metadata_changed["a"]["category"]["old"], "ml",
                     )
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["category"]["new"], "nlp"
+                        diff.topics_metadata_changed["a"]["category"]["new"], "nlp",
                     )
 
     def test_diff_dataclass(self):

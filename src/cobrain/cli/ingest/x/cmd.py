@@ -1,10 +1,13 @@
 import argparse
 import sys
 
+from cobrain.cli.ingest.x.ingest import _ingest_posts
+from cobrain.cli.ingest.x.parse import _parse_post_args
 from cobrain.parsers.x import (
-    POST_TYPE_OWN,
-    POST_TYPE_LIKED,
     POST_TYPE_BOOKMARKED,
+    POST_TYPE_LIKED,
+    POST_TYPE_OWN,
+    get_x_client,
 )
 
 
@@ -36,8 +39,6 @@ def _validate_args(args: argparse.Namespace) -> None:
 
 
 def cmd_ingest_x(args: argparse.Namespace) -> None:
-    from cobrain.cli.ingest.x.parse import _parse_post_args
-
     _validate_args(args)
 
     post_ids = _parse_post_args(args.ids)
@@ -50,8 +51,6 @@ def cmd_ingest_x(args: argparse.Namespace) -> None:
         endpoint = POST_TYPE_BOOKMARKED
 
     try:
-        from cobrain.parsers.x import get_x_client
-
         client = get_x_client(authorization_code=args.authorization_code)
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -61,8 +60,6 @@ def cmd_ingest_x(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     try:
-        from cobrain.cli.ingest.x.ingest import _ingest_posts
-
         _ingest_posts(client, args, post_ids, endpoint)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

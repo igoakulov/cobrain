@@ -1,4 +1,4 @@
-import re
+import json
 
 from cobrain.parsers.chatgpt.models import (
     EXCLUDE_CONTENT_TYPES,
@@ -88,26 +88,24 @@ def _build_audio_placeholder(msg: dict) -> str | None:
 
                 if duration is not None and format_str:
                     return f"[audio_{duration}s.{format_str}]"
-                elif duration is not None:
+                if duration is not None:
                     return f"[audio_{duration}s]"
-                elif format_str:
+                if format_str:
                     return f"[audio.{format_str}]"
-                else:
-                    return "[audio]"
+                return "[audio]"
 
-            elif part_type == "real_time_user_audio_video_asset_pointer":
+            if part_type == "real_time_user_audio_video_asset_pointer":
                 nested_audio = part.get("audio_asset_pointer", {})
                 duration = nested_audio.get("metadata", {}).get("end")
                 format_str = nested_audio.get("format")
 
                 if duration is not None and format_str:
                     return f"[audio_{duration}s.{format_str}]"
-                elif duration is not None:
+                if duration is not None:
                     return f"[audio_{duration}s]"
-                elif format_str:
+                if format_str:
                     return f"[audio.{format_str}]"
-                else:
-                    return "[audio]"
+                return "[audio]"
 
     return None
 
@@ -134,10 +132,33 @@ def _extract_multimodal_text(msg: dict) -> tuple[str, list[str]]:
     return text, []
 
 
-def extract_content(msg: dict) -> tuple[str, str, str]:
-    text, ct, lang, _, _ = extract_content_with_attachments(msg)
-    return text, ct, lang
+def extract_deep_research_from_call_tool(msg: dict) -> tuple[str, list[dict]] | None:
+    try:
+        widget_state_str = msg["metadata"]["chatgpt_sdk"]["widget_state"]
+    except (KeyError, TypeError):
+        return None
 
+    try:
+        widget_state = json.loads(widget_state_str)
+    except (json.JSONDecodeError, TypeError):
+        return None
 
-def extract_urls(text: str) -> list[str]:
-    return re.findall(r"https?://\S+", text)
+    report_message = widget_state.get("report_message")
+    if not report_message:
+        return None
+
+    if report_message.get("status") != "finished_successfully":
+        return None
+
+    parts = report_message.get("content", {}).get("parts", [])
+    if not parts:
+        return None
+
+    report_text = parts[0]
+    if not report_text or not report_text.strip():
+        return None
+
+    content_refs = report_message.get("metadata", {}).get("content_references", [])
+    refs = [ref for ref in content_refs if ref.get("type") == "webpage_extended"]
+
+    return report_text, refs

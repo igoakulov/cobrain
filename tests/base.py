@@ -13,7 +13,7 @@ class TestCase(unittest.TestCase):
         (TEST_VAULT / "sources" / "x" / "junk").mkdir(parents=True, exist_ok=True)
         (TEST_VAULT / "sources" / "chats" / "junk").mkdir(parents=True, exist_ok=True)
         (TEST_VAULT / ".cobrain" / "config").write_text(
-            "x_oauth2_client_id=\nx_oauth2_client_secret=\n"
+            "x_oauth2_client_id=\nx_oauth2_client_secret=\n",
         )
         (TEST_VAULT / ".cobrain" / "vault.yaml").write_text("topics: []")
 

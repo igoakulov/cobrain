@@ -1,9 +1,11 @@
 import argparse
 import sys
+
 import yaml
 
 from cobrain.cli.utils import SetMetadataResult, _print_errors, print_sync_summary
-from cobrain.graph import read_graph, sync as graph_sync
+from cobrain.graph import create_backup, read_graph
+from cobrain.graph import sync as graph_sync
 from cobrain.graph.validation import ValidationError
 from cobrain.topics import update_frontmatter
 
@@ -18,7 +20,7 @@ FULL_FIELDS = frozenset(
         "category",
         "parent",
         "related",
-    }
+    },
 )
 FULL_PLUS_FIELDS = frozenset(
     {
@@ -32,7 +34,7 @@ FULL_PLUS_FIELDS = frozenset(
         "related",
         "sources",
         "word_count",
-    }
+    },
 )
 
 
@@ -121,10 +123,13 @@ def _handle_discovery(args: argparse.Namespace) -> None:
         path = _find_path_to_root(args.to_topic, topic_map)
         if path:
             output_topics = _project_fields(
-                [topic_map[tid] for tid in path if tid in topic_map], field_set
+                [topic_map[tid] for tid in path if tid in topic_map],
+                field_set,
             )
             print(
-                yaml.dump(output_topics, default_flow_style=yaml_style, sort_keys=False)
+                yaml.dump(
+                    output_topics, default_flow_style=yaml_style, sort_keys=False,
+                ),
             )
         else:
             print(f"ERROR: No path to root for: {args.to_topic}", file=sys.stderr)
@@ -158,8 +163,6 @@ def _get_topics() -> list[dict]:
 
 
 def _set_metadata(topic_ids: list[str], set_fields: list[str]) -> SetMetadataResult:
-    from cobrain.cli.utils import SetMetadataResult
-
     updates = {}
     for field in set_fields:
         if "=" not in field:
@@ -183,7 +186,7 @@ def _set_metadata(topic_ids: list[str], set_fields: list[str]) -> SetMetadataRes
                     topic_id=topic_id,
                     filename=f"{topic_id}.md",
                     message=f"Topic not found: {topic_id}",
-                )
+                ),
             )
 
     topic_str = "topic" if updated_count == 1 else "topics"
@@ -233,7 +236,10 @@ def _find_path_to_root(to_id: str, topic_map: dict) -> list[str] | None:
 
 
 def _get_reachable(
-    start_id: str, topic_map: dict, topics: list[dict], max_depth: int
+    start_id: str,
+    topic_map: dict,
+    topics: list[dict],
+    max_depth: int,
 ) -> set[str]:
     conn_map = _build_connection_map(topics)
     reachable = {start_id}
@@ -266,9 +272,7 @@ def cmd_graph(args: argparse.Namespace) -> None:
     else:
         field_set = MINIMAL_FIELDS
 
-    if args.from_topic:
-        _handle_discovery(args)
-    elif args.to_topic:
+    if args.from_topic or args.to_topic:
         _handle_discovery(args)
     else:
         topics = _get_topics()
@@ -277,7 +281,5 @@ def cmd_graph(args: argparse.Namespace) -> None:
 
 
 def cmd_backup(args: argparse.Namespace) -> None:
-    from cobrain.graph import create_backup
-
     backup_path = create_backup()
     print(f"Backup created: {backup_path.name}")

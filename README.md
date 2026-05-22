@@ -37,7 +37,7 @@ Cobrain CLI helps AI agents gather, organize and visualize owner's knowledge in 
 - **Token-Efficient Agent Workflow** - CLI/skill guide and optimize agent's work and token usage, health check tooling & guidelines
 - **Graph Visualization** - `vault.html` for humans: interactive color-coded graph, instant search/filter, keyboard shortcuts, "copy selection (incl. hierarchy)" to refer/discuss with agent
 - **Local-First & Portable** - On-device, portable and self-contained `vault/` folder, multiple vaults supported (e.g. per project, personal/work), standalone sharable `vault.html`
-- **Light & Customizable** - ~4.5K LOC, no dependencies/frameworks, easy customization by agent
+- **Light & Customizable** - ~4.7K LOC, no dependencies/frameworks, easy customization by agent
 
 ## Installation & Setup
 
@@ -56,12 +56,13 @@ Multiple vaults (per project, personal/work) supported with distinct vault-local
 
 ```
 vault/
-├── vault.html            # standalone shareable page with search/filters for human user
 ├── topics/               # topic files (.md), source of truth for CLI
 ├── sources/
 │   ├── chats/            # ChatGPT conversations (.md)
 │   ├── x/                # X conversations (.yaml)
 │   └── ...               # add more for other sources
+├── vault.html            # standalone shareable page with search/filters for human user
+├── AGENTS.md             # custom instructions and persistent notes for agent
 └── .cobrain/             # app internals, read but never edit directly
     ├── config            # used to detect vault
     ├── vault.yaml        # derived graph of topics, with metadata
