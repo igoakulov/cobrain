@@ -284,7 +284,10 @@ class TestTransformations(unittest.TestCase):
         ]
         for input_content, msg, citation_urls, source_refs, expected, desc in cases:
             result = transform_assistant_messages(
-                input_content, msg, citation_urls, source_refs,
+                input_content,
+                msg,
+                citation_urls,
+                source_refs,
             )
             self.assertEqual(result, expected, f"Failed for: {desc}")
 
@@ -344,7 +347,11 @@ class TestMarkdown(unittest.TestCase):
                     citations={1: "https://example.com"},
                 )
                 content = conversation_to_markdown(
-                    conv, None, 1, "2024-01-01", "2024-01-01",
+                    conv,
+                    None,
+                    1,
+                    "2024-01-01",
+                    "2024-01-01",
                 )
             elif i == 3:
                 main_msg = MessageNode(
@@ -361,7 +368,11 @@ class TestMarkdown(unittest.TestCase):
                     messages=[main_msg, msg],
                 )
                 content = conversation_to_markdown(
-                    conv, "/path", 2, "2024-01-01", "2024-01-01",
+                    conv,
+                    "/path",
+                    2,
+                    "2024-01-01",
+                    "2024-01-01",
                 )
             else:
                 conv = Conversation(
@@ -371,7 +382,11 @@ class TestMarkdown(unittest.TestCase):
                     messages=[msg],
                 )
                 content = conversation_to_markdown(
-                    conv, "/path", 2, "2024-01-01", "2024-01-01",
+                    conv,
+                    "/path",
+                    2,
+                    "2024-01-01",
+                    "2024-01-01",
                 )
 
             for exp in expected_strings:

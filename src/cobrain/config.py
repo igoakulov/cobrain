@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from cobrain.templates import AGENTS_CONTENT
+from cobrain.AGENTS import AGENTS_CONTENT
 
 
 def _find_vault_dir(start: Path | None = None) -> Path | None:
@@ -73,6 +73,12 @@ def resolve_env_value(value: str) -> str:
     return value
 
 
+def get_warnings_ignored_sources() -> list[str]:
+    config = load_config()
+    value = config.get("warnings_ignored_sources", "")
+    return [entry.strip() for entry in value.split(",") if entry.strip()]
+
+
 def get_x_config() -> dict[str, str]:
     _ensure_config_key("x_oauth2_client_id", "")
     _ensure_config_key("x_oauth2_client_secret", "")
@@ -138,7 +144,9 @@ def init_vault(vault_path: Path) -> None:
     (vault_path / "sources/x").mkdir(parents=True, exist_ok=True)
 
     config_path = vault_path / ".cobrain" / "config"
-    config_path.write_text("x_oauth2_client_id=\nx_oauth2_client_secret=\n")
+    config_path.write_text(
+        "x_oauth2_client_id=\nx_oauth2_client_secret=\nwarnings_ignored_sources=/junk/\n",
+    )
 
     agents_path = vault_path / "AGENTS.md"
     if not agents_path.exists():

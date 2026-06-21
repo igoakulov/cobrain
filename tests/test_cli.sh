@@ -21,8 +21,6 @@ cat > topics/a.md << 'EOF'
 id: a
 title: Topic A
 aliases: alias-a,topic-a
-created_at: 2026-03-19
-updated_at: 2026-03-19
 category: ml
 parent:
 related: []
@@ -39,8 +37,6 @@ cat > topics/b.md << 'EOF'
 id: b
 title: Topic B
 aliases: alias-b
-created_at: 2026-03-19
-updated_at: 2026-03-19
 category: ml
 parent: a
 related:
@@ -58,8 +54,6 @@ cat > topics/c.md << 'EOF'
 id: c
 title: Topic C
 aliases:
-created_at: 2026-03-19
-updated_at: 2026-03-19
 category: nlp
 parent: a
 related: []
@@ -75,8 +69,6 @@ cat > topics/orphan.md << 'EOF'
 id: orphan
 title: Orphan Topic
 aliases:
-created_at: 2026-03-19
-updated_at: 2026-03-19
 category: ml
 parent: nonexistent-parent
 related: []

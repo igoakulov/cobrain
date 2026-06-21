@@ -55,37 +55,71 @@ vault/
 
 ## Agent Responsibilities
 
+Manager:
 1. Ingest sources on demand: Add ChatGPT / X conversations (X charges per post, use responsibly!) and other
-2. Create good topics: Synthesize sources into few high-signal, actionable, grep-friendly topics
-3. Organize clean graph: Maintain coherent hierarchy, no spam/duplicates/orphans, proper links
-4. Find knowledge on demand: Explore graph, search topics, retrieve information for user or task
-5. Manage vault autonomously: Health checks, graph and topic quality assessment, custom instructions
+2. Organize clean graph: decide structure (create vs update, placement, hierarchy), no spam/duplicates/orphans, proper links
+3. Find knowledge on demand: Explore graph, search topics, retrieve information for user or task
+4. Manage vault autonomously: Health checks, graph and topic quality assessment, custom instructions
+5. Manage sub-agents: brief, delegate, verify decisions against actual source content
+6. Accountable for quality of final result
 
-Metrics:
+Sub-agent (Writer):
+1. Read assigned sources
+2. Identify signal vs junk
+3. Synthesize content into topics: high-signal, actionable, grep-friendly
+4. Propose new topics (id, title, hub, rationale)
+5. Report updates + junk recs + quality issues
+Constraints: no editing/moving/deleting source files (read only), no creating topics (propose only), no writing to AGENTS.md (report back only)
+
+---
+
+## Metrics
+
 - Far fewer topics than sources in mature graph - synthesize, don't spam new
 - Clear graph - no ambiguity, duplicates, orphans
 - Topics easy to find by id/aliases/title/keywords in body
 - 0 warnings in sync and sources
 - Backups before meaningful graph changes
-- Custom vault management instructions (learnings, user preferences) are actively updated and followed each session in `vault/AGENTS.md` or equivalent
+- Custom instructions (learnings, user preferences) are actively updated and followed each session in `vault/AGENTS.md` or equivalent
 
 ---
 
 ## Tasks
 
 Typical session order:
-1. Read this skill + custom instructions in `vault/AGENTS.md` or equivalent
-2. Ensure good current state:
-   - Sync `brn sync --warnings` + fix warnings
-   - Inspect graph `brn vault ...`
-3. Ingest + read new sources: `brn sources --ingest ...`
-4. Update topics:
-   - Review graph to decide which topics to update vs. create
-   - Backup graph if big changes
-   - Update/create topics, bulk-manage frontmatter `brn vault --ids ... [--set ...]`
-5. Sync again + fix warnings
-6. Show state to user: `brn show`
-7. Update custom instructions in `vault/AGENTS.md` if needed
+1. Read skill + `vault/AGENTS.md`
+2. Sync `brn sync --warnings` + inspect `brn vault --full` — graph shape, existing coverage, recency; fix warnings
+3. Ingest — ask user if/what to ingest
+4. Subagent: read sources, report signal vs junk + topic proposals
+5. Plan — decide create vs update from reports, chunk if many
+6. Update topics:
+   - Manager: create empty shells (prevent dups), assign back, move junk sources
+   - Subagent: fill assigned topics, report updates + junk recs
+7. Verify — read updated topics; subagent fixes if needed
+8. Sync `brn sync --warnings` + show `brn show` — fix warnings, verify state visually
+   - When assessing graph, look out for: topics too small (thin content, few sources) or too large (unfocused); too many children under one parent (may need intermediate grouping); parent-child mismatch (child doesn't fit parent's scope); bad naming (IDs not searchable, titles not descriptive); orphans, duplicates
+9. Save: update `vault/AGENTS.md` (handoff only if helps prevent/solve a problem for next agent/session; update Custom instructions if learned something new), `brn backup`, additional backups (e.g. git) if needed
+
+IMPORTANT: Manager decisions (junk, duplicate, topic placement) must be informed by actual source content. Manager has NOT read sources — before finalizing, send decision to subagent to verify/confirm against their reading. Prevents hallucinated reasoning.
+
+### Discover Graph
+
+Before adding new content, understand current graph with token-efficient `brn vault` traversal:
+
+```bash
+brn vault  # all topics, minimal fields
+brn vault --full  # +title +timestamps — preferred for initial inspection
+brn vault --ids a,b --full+  # specific topics, all fields
+brn vault --from <topic> --depth 2  # discover subtree under topic
+brn vault --from <a> --to <b>  # path between topics via parents
+brn vault --block  # human-friendly output for user to view directly
+```
+
+Note: `brn vault` outputs YAML, not JSON.
+
+Use `ls topics/` and `grep` to search by content when CLI insufficient. Use `head` (not CLI) for quick single-topic metadata - first 10 lines of frontmatter include everything except sources.
+
+---
 
 ### Ingest Sources
 
@@ -147,28 +181,14 @@ Read non-integrated sources (webpage, file, chat) directly and choose:
 
 #### Managing sources
 
+Manager-only (sub-agent is read-only on sources):
+
 Organize each source with subfolders to help your workflow:
 - After you run ingest, find list of newly added/updated sources with `ls -t sources/.../ | head -n 15` or in your `.cobrain/logs/.../`
 - Move ingested but unprocessed sources to `souces/.../pending/` or similar, so that unfinished state isn't lost in translation between agent sessions
-- Move sources with no value to topics to `sources/.../junk/` to avoid re-reading them in future
+- Move (not copy) sources with no value to topics to `sources/.../junk/` — avoids orphaned frontmatter refs. Files in any `junk/` directory are ignored from `brn sources --warnings` by default (configured via `warnings_ignored_sources` in `.cobrain/config`).
 - Find and update any old source filepath in topics frontmatter after you move the file.
 - Note unfinished work for the next agent/session in `vault/AGENTS.md` or equivalent. Example: "Process `sources/x/pending/` into topics."
-
----
-
-### Discover Graph
-
-Before adding new content, understand current graph with token-efficient `brn vault` traversal:
-
-```bash
-brn vault  # all topics, minimal fields
-brn vault --ids a,b --full+  # specific topics, all fields
-brn vault --from <topic> --depth 2  # discover subtree under topic
-brn vault --from <a> --to <b>  # path between topics via parents
-brn vault --block  # human-friendly output for user to view directly
-```
-
-Use `ls topics/` and `grep` to search by content when CLI insufficient. Use `head` (not CLI) for quick single-topic metadata - first 10 lines of frontmatter include everything except sources.
 
 ---
 
@@ -181,8 +201,6 @@ Topic Template (markdown with YAML frontmatter):
 id: <unique-id>  # immutable after creation
 title: <Topic Title>  # proper full title
 aliases: <alternative-names>  # for search
-created_at: <YYYY-MM-DD>  # ISO date
-updated_at: <YYYY-MM-DD>
 category: <category>  # for classification, search, color-coding
 parent: <parent-topic-id>  # required unless root
 related: [<related-topic-ids>]
@@ -202,20 +220,28 @@ Guidelines:
 - Concrete: data points and figures, formulas, specific cases
 - Noise-free: has high value density, no noise from original sources
 - Multiple sources per topic, not 1:1 (spammy)
+- IDs short (displayed on graph, not titles). Prefer descriptive over acronyms unless canonical
+- No `related:` between siblings — shared parent implies relationship. Cross-link non-siblings only
+- Sources split across topics if mixed content
+- Topics precise enough to reflect source content and be findable by source keywords, broad enough to fit immediately adjacent future content
 
-Before creating: search (`brn vault`, grep) -> check aliases/category/keywords for overlaps -> assess graph structure fit -> decide create vs update (update if same domain/parent, create if too large/distinct concept/needs different parent)
+Before creating: search (`brn vault`, grep) -> check aliases/category/keywords for overlaps -> assess graph structure fit -> decide create vs update (update if same domain/parent, create if too large/distinct concept/needs different parent). When choosing target/parent, reason about how content may evolve given current graph and domain — place where future adjacent content naturally fits, not just where current content sits.
 
 Creating:
 1. Write file to `vault/topics/<id>.md` using `cat > topics/<id>.md`.
 2. Topic ID is immutable after creation - never change it.
 
+Per session step 6: Manager creates empty shell (frontmatter only), Sub-agent fills body. Sub-agent never creates topic files directly.
+
 Updating:
 1. Read existing topic metadata with `head topics/<id>.md`
 2. Read full content via `cat topics/<id>.md`
 3. Edit file directly
-4. Use token-efficient `brn vault --ids <id> --set parent=<parent> category=<cat>` to set metadata for multiple topics in bulk, and/or skipping file reads.
-5. Update `updated_at` in frontmatter
+4. Add source to `sources:` frontmatter for every source used (easy to forget in bulk work)
+5. Use token-efficient `brn vault --ids <id> --set parent=<parent> category=<cat>` to set metadata for multiple topics in bulk, and/or skipping file reads.
 6. Run `brn sync` to reflect changes in graph
+
+IMPORTANT: Before bulk edits via scripts: inspect targets carefully to avoid false-positives that are hard/costly to restore!
 
 After creating/updating:
 1. Update related topics: add new topic to their related lists
@@ -255,7 +281,7 @@ When to use shell vs CLI:
 
 ---
 
-### f. Maintenance
+### Maintenance
 
 ```bash
 brn sync --warnings  # missing/duplicate id, no parent, frontmatter not at top, empty body

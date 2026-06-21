@@ -73,7 +73,9 @@ def parse_conversation(conv: dict) -> Conversation:
                 text = parts[0] if parts else ""
                 if "/Deep Research App/" in text:
                     content = transform_assistant_messages_deep_research(
-                        report_text, content_refs, source_refs,
+                        report_text,
+                        content_refs,
+                        source_refs,
                     )
                     create_time = msg.get("create_time") or 0
                     messages.append(
@@ -157,11 +159,16 @@ def _traverse_messages(
             if role == "assistant":
                 if deep_research_refs is not None:
                     content = transform_assistant_messages_deep_research(
-                        content, deep_research_refs, source_refs,
+                        content,
+                        deep_research_refs,
+                        source_refs,
                     )
                 else:
                     content = transform_assistant_messages(
-                        content, msg, citation_urls, source_refs,
+                        content,
+                        msg,
+                        citation_urls,
+                        source_refs,
                     )
 
             prefix_parts: list[str] = []
@@ -205,7 +212,8 @@ def _traverse_messages(
 
 
 def parse_conversation_expand(
-    conv_data: dict, last_message_id: str | None,
+    conv_data: dict,
+    last_message_id: str | None,
 ) -> Conversation:
     conv = parse_conversation(conv_data)
 

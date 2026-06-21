@@ -128,7 +128,9 @@ def _handle_discovery(args: argparse.Namespace) -> None:
             )
             print(
                 yaml.dump(
-                    output_topics, default_flow_style=yaml_style, sort_keys=False,
+                    output_topics,
+                    default_flow_style=yaml_style,
+                    sort_keys=False,
                 ),
             )
         else:
@@ -257,27 +259,6 @@ def _get_reachable(
         frontier = new_frontier
 
     return reachable
-
-
-def cmd_graph(args: argparse.Namespace) -> None:
-    yaml_style = False if args.block else True
-
-    field_set = None
-    if hasattr(args, "full_plus") and args.full_plus:
-        field_set = FULL_PLUS_FIELDS
-    elif hasattr(args, "full") and args.full:
-        field_set = FULL_FIELDS
-    elif hasattr(args, "minimal") and args.minimal:
-        field_set = MINIMAL_FIELDS
-    else:
-        field_set = MINIMAL_FIELDS
-
-    if args.from_topic or args.to_topic:
-        _handle_discovery(args)
-    else:
-        topics = _get_topics()
-        output_data = {"topics": _project_fields(topics, field_set)}
-        print(yaml.dump(output_data, default_flow_style=yaml_style, sort_keys=False))
 
 
 def cmd_backup(args: argparse.Namespace) -> None:

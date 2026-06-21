@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from pathlib import Path
 
 from cobrain.directories import VAULT_DIR, get_vault_graph_path
@@ -15,6 +16,15 @@ from cobrain.yaml_utils import read_yaml, write_yaml
 
 def _count_words(body: str) -> int:
     return len(body.split())
+
+
+def _file_dates(path: Path) -> tuple[str, str]:
+    stat = path.stat()
+    updated_ts = stat.st_mtime
+    created_ts = getattr(stat, "st_birthtime", None) or stat.st_ctime
+    created_at = datetime.fromtimestamp(created_ts).strftime("%Y-%m-%dT%H:%M")
+    updated_at = datetime.fromtimestamp(updated_ts).strftime("%Y-%m-%dT%H:%M")
+    return created_at, updated_at
 
 
 def scan_topics_dir() -> list[Path]:
@@ -65,6 +75,7 @@ def build_graph() -> BuildResult:
 
             topic = topic_from_markdown(topic_id, content)
             topic.word_count = _count_words(body)
+            topic.created_at, topic.updated_at = _file_dates(path)
 
             filename_map[topic.id] = filename
 
@@ -192,5 +203,8 @@ def read_graph() -> BuildResult:
 
     topics = [Topic.from_dict(t) for t in data.get("topics", [])]
     return BuildResult(
-        topics=topics, categories=[], validation_errors=[], clean_issues=[],
+        topics=topics,
+        categories=[],
+        validation_errors=[],
+        clean_issues=[],
     )

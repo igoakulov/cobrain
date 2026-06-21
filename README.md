@@ -37,7 +37,7 @@ Cobrain CLI helps AI agents gather, organize and visualize owner's knowledge in 
 - **Token-Efficient Agent Workflow** - CLI/skill guide and optimize agent's work and token usage, health check tooling & guidelines
 - **Graph Visualization** - `vault.html` for humans: interactive color-coded graph, instant search/filter, keyboard shortcuts, "copy selection (incl. hierarchy)" to refer/discuss with agent
 - **Local-First & Portable** - On-device, portable and self-contained `vault/` folder, multiple vaults supported (e.g. per project, personal/work), standalone sharable `vault.html`
-- **Light & Customizable** - ~4.7K LOC, no dependencies/frameworks, easy customization by agent
+- **Light & Customizable** - ~5K LOC, no dependencies/frameworks, easy customization by agent
 
 ## Installation & Setup
 

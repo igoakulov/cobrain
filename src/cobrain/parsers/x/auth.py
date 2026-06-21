@@ -21,7 +21,10 @@ class OAuth2TokenManager:
         self.authorization_code = authorization_code
 
     def _save_tokens(
-        self, access_token: str, refresh_token: str, expires_in: int,
+        self,
+        access_token: str,
+        refresh_token: str,
+        expires_in: int,
     ) -> None:
         set_x_config(
             oauth2_access_token=access_token,
@@ -67,7 +70,9 @@ class OAuth2TokenManager:
             access_token = tokens["access_token"]
             refresh_token = tokens.get("refresh_token", self.refresh_token)
             self._save_tokens(
-                access_token, refresh_token, tokens.get("expires_in", 7200),
+                access_token,
+                refresh_token,
+                tokens.get("expires_in", 7200),
             )
             return access_token
         except Exception as e:

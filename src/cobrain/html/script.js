@@ -23,7 +23,7 @@ var selectedIds = {};
 var matchedIds = {};
 var searchFocused = false;
 var isMac = navigator.userAgent.includes("Mac");
-var dateValues = ["⏱", "1W", "1M", "3M"];
+var dateValues = ["⏱", "1D", "1W", "1M", "3M"];
 var dateFilterIndex = 0;
 var copyHint = isMac ? "⌘C" : "Ctrl+C";
 var openHint = "⏎";
@@ -274,7 +274,7 @@ function applyFilters(query) {
       .filter(function (t) {
         return t.length > 0;
       });
-  var dateDays = [0, 7, 30, 90][dateFilterIndex];
+  var dateDays = [0, 1, 7, 30, 90][dateFilterIndex];
   var now = new Date();
   matchedIds = {};
   node.style("opacity", function (d) {
@@ -336,7 +336,7 @@ function copySelection() {
   for (var i = 0; i < selected.length; i++) {
     var topic = topicMap[selected[i]];
     if (!topic.parent || !selectedIds[topic.parent]) {
-      output.push(selected[i] + " - " + topic.title);
+      output.push(selected[i]);
       collectChildren(selected[i], topicMap, output, 1);
     }
   }
@@ -355,7 +355,7 @@ function collectChildren(parentId, topicMap, output, indent) {
   for (var i = 0; i < nodes.length; i++) {
     var n = nodes[i];
     if (n.parent === parentId && selectedIds[n.id]) {
-      output.push(makeIndent(indent) + n.id + " - " + n.title);
+      output.push(makeIndent(indent) + n.id);
       collectChildren(n.id, topicMap, output, indent + 1);
     }
   }
@@ -473,9 +473,7 @@ window.addEventListener("keydown", function (event) {
   if (event.code === "Escape") {
     if (searchFocused) {
       searchInput.property("value", "").node().blur();
-      node.style("opacity", 1);
-      linkParent.style("opacity", 1);
-      linkRelated.style("opacity", 1);
+      applyFilters("");
     } else if (Object.keys(selectedIds).length > 0) {
       selectedIds = {};
       node

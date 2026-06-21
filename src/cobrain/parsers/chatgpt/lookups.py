@@ -73,7 +73,8 @@ def build_citations_dicts(
 
         if ref_type == "link_title":
             cite_match = re.search(
-                r"\ue200link_title\ue202.+?\ue202(.+?)\ue201", matched_text,
+                r"\ue200link_title\ue202.+?\ue202(.+?)\ue201",
+                matched_text,
             )
             if cite_match:
                 key = cite_match.group(1)

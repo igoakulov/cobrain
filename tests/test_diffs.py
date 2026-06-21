@@ -103,10 +103,12 @@ class TestDiffs(unittest.TestCase):
                 elif desc == "parent change":
                     self.assertIn("a", diff.topics_metadata_changed)
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["parent"]["old"], "root",
+                        diff.topics_metadata_changed["a"]["parent"]["old"],
+                        "root",
                     )
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["parent"]["new"], "newparent",
+                        diff.topics_metadata_changed["a"]["parent"]["new"],
+                        "newparent",
                     )
                     # Also check connections
                     added = [
@@ -140,10 +142,12 @@ class TestDiffs(unittest.TestCase):
                 elif desc == "category change":
                     self.assertIn("a", diff.topics_metadata_changed)
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["category"]["old"], "ml",
+                        diff.topics_metadata_changed["a"]["category"]["old"],
+                        "ml",
                     )
                     self.assertEqual(
-                        diff.topics_metadata_changed["a"]["category"]["new"], "nlp",
+                        diff.topics_metadata_changed["a"]["category"]["new"],
+                        "nlp",
                     )
 
     def test_diff_dataclass(self):

@@ -9,7 +9,9 @@ from cobrain.parsers.chatgpt.utils import trim_url
 
 
 def transform_assistant_messages_deep_research(
-    content: str, content_refs: list[dict], source_refs: dict[str, int],
+    content: str,
+    content_refs: list[dict],
+    source_refs: dict[str, int],
 ) -> str:
     citations_dict_from_deep_research: dict[int, tuple[str, str]] = {}
     for ref in content_refs:
@@ -90,7 +92,8 @@ def transform_assistant_messages(
         try:
             inner = json.loads(match.group(1))
             math_content = inner.get("math_block_widget_common_keywords", {}).get(
-                "content", "",
+                "content",
+                "",
             ) or inner.get("content", "")
             if math_content:
                 return f"({math_content})"
@@ -99,11 +102,16 @@ def transform_assistant_messages(
             return match.group(0)
 
     content = re.sub(
-        r"\ue200genui\ue202(\{.+?\})\ue201", replace_math, content, flags=re.DOTALL,
+        r"\ue200genui\ue202(\{.+?\})\ue201",
+        replace_math,
+        content,
+        flags=re.DOTALL,
     )
 
     content = re.sub(
-        r"\\\(([^)]*)\\\)", lambda m: "(" + m.group(1).replace("\\", "") + ")", content,
+        r"\\\(([^)]*)\\\)",
+        lambda m: "(" + m.group(1).replace("\\", "") + ")",
+        content,
     )
     content = content.replace("\\$", "$")
 
@@ -269,7 +277,9 @@ def transform_assistant_messages(
     content = re.sub(
         r"[\u3010][^\u3011]*\d+[^\u3011]*[\u3011]",
         lambda m: _replace_webpage_extended_citations(
-            m, citations_dict_from_webpage_extended, source_refs,
+            m,
+            citations_dict_from_webpage_extended,
+            source_refs,
         ),
         content,
     )

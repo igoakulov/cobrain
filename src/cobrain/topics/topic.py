@@ -1,6 +1,5 @@
 import re
 from dataclasses import dataclass, field
-from datetime import date
 from typing import Any
 
 import yaml
@@ -13,26 +12,26 @@ class Topic:
     id: str
     title: str
     aliases: list[str] = field(default_factory=list)
-    created_at: str = ""
-    updated_at: str = ""
     category: str = ""
     parent: str = ""
     related: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
     word_count: int = 0
+    created_at: str = ""
+    updated_at: str = ""
 
     def to_dict(self) -> dict:
         return {
             "id": self.id,
             "title": self.title,
             "aliases": self.aliases,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
             "category": self.category,
             "parent": self.parent,
             "related": self.related,
             "sources": self.sources,
             "word_count": self.word_count,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
         }
 
     @staticmethod
@@ -41,13 +40,13 @@ class Topic:
             id=data.get("id", ""),
             title=data.get("title", ""),
             aliases=data.get("aliases", []),
-            created_at=data.get("created_at", ""),
-            updated_at=data.get("updated_at", ""),
             category=data.get("category", ""),
             parent=data.get("parent", ""),
             related=data.get("related", []),
             sources=data.get("sources", []),
             word_count=data.get("word_count", 0),
+            created_at=data.get("created_at", ""),
+            updated_at=data.get("updated_at", ""),
         )
 
 
@@ -91,8 +90,6 @@ def get_frontmatter_order() -> list[str]:
         "id",
         "title",
         "aliases",
-        "created_at",
-        "updated_at",
         "category",
         "parent",
         "related",
@@ -141,10 +138,8 @@ def topic_from_markdown(topic_id: str, content: str) -> Topic:
     if data.get("parent") is None:
         data["parent"] = ""
 
-    if isinstance(data.get("created_at"), date):
-        data["created_at"] = data["created_at"].isoformat()
-    if isinstance(data.get("updated_at"), date):
-        data["updated_at"] = data["updated_at"].isoformat()
+    data.pop("created_at", None)
+    data.pop("updated_at", None)
 
     return Topic.from_dict({**data, "id": data.get("id", topic_id)})
 
@@ -180,8 +175,6 @@ def update_frontmatter(topic_id: str, updates: dict[str, Any]) -> None:
     data, body = parse_frontmatter(content)
 
     data.update(updates)
-    if "updated_at" not in updates:
-        data["updated_at"] = str(date.today())
 
     lines = ["---"]
     for key in get_frontmatter_order():
