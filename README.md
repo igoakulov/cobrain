@@ -41,7 +41,13 @@ Cobrain CLI helps AI agents gather, organize and visualize owner's knowledge in 
 
 ## Installation & Setup
 
-Install agent skill in your harness: [skills/cobrain-vault](skills/cobrain-vault). Agent does the rest.
+Ask your AI agent to run this command to install the [Cobrain skill](skills/cobrain-vault):
+
+```bash
+npx skills add igoakulov/cobrain --skill cobrain-vault -g -y
+```
+
+The agent installs the skill and finishes setup for you.
 
 Alternative:
 ```bash
